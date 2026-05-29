@@ -1,0 +1,286 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.wrap { padding: 1rem 0; }
+.section { margin-bottom: 1.5rem; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+.section-header { padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+.section-header h2 { font-size: 14px; font-weight: 500; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px; }
+.section-header .badge { font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); }
+.progress-bar { height: 3px; background: var(--color-border-tertiary); }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.items { background: var(--color-background-primary); }
+.item { display: flex; align-items: flex-start; gap: 10px; padding: 0.6rem 1rem; border-top: 0.5px solid var(--color-border-tertiary); cursor: pointer; transition: background 0.15s; }
+.item:hover { background: var(--color-background-secondary); }
+.item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; }
+.item label { font-size: 13px; color: var(--color-text-primary); cursor: pointer; line-height: 1.5; flex: 1; }
+.item label.done { text-decoration: line-through; color: var(--color-text-tertiary); }
+.tag { font-size: 10px; padding: 1px 6px; border-radius: 99px; margin-left: 6px; font-weight: 500; white-space: nowrap; }
+.tag-critical { background: #FCEBEB; color: #A32D2D; }
+.tag-flow { background: #E6F1FB; color: #185FA5; }
+.tag-ui { background: #EAF3DE; color: #3B6D11; }
+.tag-data { background: #FAEEDA; color: #854F0B; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.stat { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; }
+.stat p { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.stat span { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.reset-btn { font-size: 12px; padding: 4px 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.reset-btn:hover { background: var(--color-background-secondary); }
+.top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.top-bar h1 { font-size: 16px; font-weight: 500; color: var(--color-text-primary); }
+</style>
+
+<div class="wrap">
+  <h2 class="sr-only">HearLinX full pipeline testing checklist</h2>
+  <div class="top-bar">
+    <h1>HearLinX — pipeline test checklist</h1>
+    <button class="reset-btn" onclick="resetAll()">reset all</button>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><p>total checks</p><span id="total">0</span></div>
+    <div class="stat"><p>passed</p><span id="passed" style="color:#1D9E75">0</span></div>
+    <div class="stat"><p>remaining</p><span id="remaining" style="color:#D85A30">0</span></div>
+    <div class="stat"><p>progress</p><span id="pct">0%</span></div>
+  </div>
+
+  <div id="sections"></div>
+</div>
+
+<script>
+const sections = [
+  {
+    id: "env",
+    label: "1 — environment & startup",
+    color: "#1D9E75",
+    items: [
+      { text: "Run run_all.bat — no port conflict errors", tags: ["critical"] },
+      { text: "Backend starts on port 8000 without errors", tags: ["critical"] },
+      { text: "Web portal starts on port 3000 without errors", tags: ["critical"] },
+      { text: "Flutter app builds and launches on Android device/emulator", tags: ["critical"] },
+      { text: "API docs accessible at localhost:8000/docs", tags: ["flow"] },
+    ]
+  },
+  {
+    id: "seed",
+    label: "2 — seed data",
+    color: "#BA7517",
+    items: [
+      { text: "Run seed.py — no errors", tags: ["critical"] },
+      { text: "BABY001–BABY020 exist in DB with all i-Jejak fields", tags: ["data"] },
+      { text: "4 users created: SCR001, COO001, ADM001, MOH001", tags: ["data"] },
+      { text: "sample_wristbands.pdf generated with 20 wristbands", tags: ["data"] },
+      { text: "Each wristband shows system_id, QR code, ward, hospital name", tags: ["data"] },
+    ]
+  },
+  {
+    id: "auth",
+    label: "3 — auth & RBAC (web + flutter)",
+    color: "#534AB7",
+    items: [
+      { text: "SCR001/1234 logs in on Flutter — lands on screener home", tags: ["critical"] },
+      { text: "COO001/1234 logs in on Flutter — lands on coordinator dashboard", tags: ["critical"] },
+      { text: "COO001/1234 logs in on Web — lands on coordinator dashboard", tags: ["critical"] },
+      { text: "ADM001/1234 logs in on Web — lands on UNHS dashboard", tags: ["critical"] },
+      { text: "MOH001/1234 logs in on Web — lands on MoH dashboard", tags: ["critical"] },
+      { text: "MOH001 cannot access /coordinator route — redirected", tags: ["critical"] },
+      { text: "SCR001 cannot access coordinator or dashboard screens on Flutter", tags: ["critical"] },
+      { text: "Invalid PIN shows error, does not log in", tags: ["flow"] },
+    ]
+  },
+  {
+    id: "screening",
+    label: "4 — screening entry (flutter — screener)",
+    color: "#185FA5",
+    items: [
+      { text: "Scan QR from wristband PDF — baby details auto-fill correctly", tags: ["critical"] },
+      { text: "Screening type dropdown shows TEOAE / AABR / ABR", tags: ["critical"] },
+      { text: "Select each ear result: pass, refer, not_tested", tags: ["flow"] },
+      { text: "Submit screening — success snackbar shown", tags: ["critical"] },
+      { text: "Record appears in DB via API docs", tags: ["data"] },
+      { text: "Optional notes field accepts up to 100 characters", tags: ["ui"] },
+      { text: "Submit with no QR scan — validation error shown", tags: ["flow"] },
+    ]
+  },
+  {
+    id: "offline",
+    label: "5 — offline sync (flutter)",
+    color: "#0F6E56",
+    items: [
+      { text: "Turn off WiFi/data — home screen shows 'X rekod belum disinkron'", tags: ["critical"] },
+      { text: "Submit screening while offline — saved locally, no crash", tags: ["critical"] },
+      { text: "Restore connectivity — auto-sync fires within 20s", tags: ["critical"] },
+      { text: "After sync — home screen shows 'Semua Tersimpan'", tags: ["critical"] },
+      { text: "Synced record visible in coordinator dashboard", tags: ["flow"] },
+    ]
+  },
+  {
+    id: "shift",
+    label: "6 — shift summary (flutter — screener)",
+    color: "#3B6D11",
+    items: [
+      { text: "Shift summary shows screenings entered this shift", tags: ["flow"] },
+      { text: "Baby system_id masked as ****{last4}", tags: ["critical"] },
+      { text: "Screening type and ear results shown correctly", tags: ["ui"] },
+    ]
+  },
+  {
+    id: "babies",
+    label: "7 — baby registration (web — coordinator)",
+    color: "#993C1D",
+    items: [
+      { text: "Sidebar shows 'Daftar Bayi' / 'Register Baby' link", tags: ["ui"] },
+      { text: "All 8 fields present: system_id, full_name_enc, ic_number_enc, DOB, gender, ward, gestational_age, birth_weight", tags: ["critical"] },
+      { text: "Submit valid baby — success toast shown", tags: ["critical"] },
+      { text: "New baby queryable via GET /babies/ in API docs", tags: ["data"] },
+      { text: "Submit duplicate system_id — API error shown in UI", tags: ["flow"] },
+      { text: "Screener cannot access /coordinator/babies — RBAC blocks", tags: ["critical"] },
+    ]
+  },
+  {
+    id: "followup",
+    label: "8 — follow-up queue (flutter + web — coordinator)",
+    color: "#D85A30",
+    items: [
+      { text: "Refer result from screening appears in follow-up queue", tags: ["critical"] },
+      { text: "Flutter: Mark Contacted button calls PATCH /followups/{id} — status updates", tags: ["critical"] },
+      { text: "Flutter: Book Appointment — status updates to appointment_booked", tags: ["critical"] },
+      { text: "Flutter: Escalate — status updates to escalated", tags: ["critical"] },
+      { text: "Flutter: Close — status updates to closed", tags: ["critical"] },
+      { text: "Web coordinator follow-up page reflects updated statuses", tags: ["flow"] },
+      { text: "Success snackbar shown for each action", tags: ["ui"] },
+      { text: "Error snackbar shown if PATCH fails", tags: ["flow"] },
+    ]
+  },
+  {
+    id: "dashboards",
+    label: "9 — dashboards (web)",
+    color: "#533AB7",
+    items: [
+      { text: "Coordinator dashboard KPI cards show correct counts", tags: ["critical"] },
+      { text: "Trend chart renders with seed data", tags: ["ui"] },
+      { text: "1-3-6 tracker bars render correctly", tags: ["ui"] },
+      { text: "Follow-up banner shows outstanding cases count", tags: ["flow"] },
+      { text: "UNHS dashboard shows aggregate data only — no individual records", tags: ["critical"] },
+      { text: "MoH dashboard shows national aggregate only — no individual records", tags: ["critical"] },
+      { text: "Audit logs visible on UNHS dashboard", tags: ["flow"] },
+      { text: "EN/BM toggle works on all 3 dashboards", tags: ["ui"] },
+    ]
+  },
+  {
+    id: "reports",
+    label: "10 — reports & export (web — coordinator)",
+    color: "#185FA5",
+    items: [
+      { text: "Monthly report page loads with data", tags: ["flow"] },
+      { text: "Excel export downloads .xlsx file", tags: ["critical"] },
+      { text: "PDF print triggers browser print dialog", tags: ["flow"] },
+      { text: "MoH dashboard Excel export downloads correctly", tags: ["critical"] },
+      { text: "Exported file contains correct aggregate data", tags: ["data"] },
+    ]
+  },
+  {
+    id: "bilingual",
+    label: "11 — bilingual BM/EN",
+    color: "#3B6D11",
+    items: [
+      { text: "Default language is BM on web and Flutter", tags: ["critical"] },
+      { text: "Toggle to EN — all labels switch correctly", tags: ["ui"] },
+      { text: "Toggle back to BM — persists after page refresh (localStorage)", tags: ["ui"] },
+      { text: "Flutter EN/BM toggle persists after app restart (SharedPreferences)", tags: ["ui"] },
+      { text: "No untranslated hardcoded strings visible in either language", tags: ["ui"] },
+    ]
+  },
+  {
+    id: "rbac_final",
+    label: "12 — RBAC final sweep",
+    color: "#A32D2D",
+    items: [
+      { text: "POST /babies/ returns 403 if called as screener", tags: ["critical"] },
+      { text: "GET /screenings/ returns only own screenings for screener role", tags: ["critical"] },
+      { text: "MoH user cannot GET individual baby records", tags: ["critical"] },
+      { text: "UNHS user cannot GET individual baby/screening records", tags: ["critical"] },
+      { text: "All role restrictions confirmed via API docs direct calls", tags: ["critical"] },
+    ]
+  }
+];
+
+const tagMap = { critical: "tag-critical", flow: "tag-flow", ui: "tag-ui", data: "tag-data" };
+const tagLabel = { critical: "critical", flow: "flow", ui: "ui", data: "data" };
+
+let state = {};
+
+function loadState() {
+  try { state = JSON.parse(localStorage.getItem("hl_test") || "{}"); } catch { state = {}; }
+}
+function saveState() {
+  try { localStorage.setItem("hl_test", JSON.stringify(state)); } catch {}
+}
+
+function updateStats() {
+  const all = document.querySelectorAll("input[type=checkbox]");
+  const checked = document.querySelectorAll("input[type=checkbox]:checked");
+  const t = all.length, p = checked.length, r = t - p;
+  document.getElementById("total").textContent = t;
+  document.getElementById("passed").textContent = p;
+  document.getElementById("remaining").textContent = r;
+  document.getElementById("pct").textContent = t ? Math.round(p/t*100) + "%" : "0%";
+
+  sections.forEach(s => {
+    const sItems = document.querySelectorAll(`#sec-${s.id} input[type=checkbox]`);
+    const sDone = document.querySelectorAll(`#sec-${s.id} input[type=checkbox]:checked`);
+    const pct = sItems.length ? sDone.length / sItems.length : 0;
+    const fill = document.querySelector(`#sec-${s.id} .progress-fill`);
+    const badge = document.querySelector(`#sec-${s.id} .badge`);
+    if (fill) fill.style.width = (pct * 100) + "%";
+    if (badge) { badge.textContent = `${sDone.length}/${sItems.length}`; badge.style.background = pct === 1 ? "#E1F5EE" : "#F1EFE8"; badge.style.color = pct === 1 ? "#0F6E56" : "#5F5E5A"; }
+  });
+}
+
+function toggle(id, checked) {
+  state[id] = checked;
+  saveState();
+  const label = document.querySelector(`label[for="${id}"]`);
+  if (label) { if (checked) label.classList.add("done"); else label.classList.remove("done"); }
+  updateStats();
+}
+
+function resetAll() {
+  state = {};
+  saveState();
+  document.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = false; });
+  document.querySelectorAll("label").forEach(l => l.classList.remove("done"));
+  updateStats();
+}
+
+function render() {
+  loadState();
+  const container = document.getElementById("sections");
+  sections.forEach(s => {
+    const div = document.createElement("div");
+    div.className = "section";
+    div.id = `sec-${s.id}`;
+    div.innerHTML = `
+      <div class="progress-bar"><div class="progress-fill" style="background:${s.color};width:0%"></div></div>
+      <div class="section-header">
+        <h2>${s.label}</h2>
+        <span class="badge" style="background:#F1EFE8;color:#5F5E5A">0/${s.items.length}</span>
+      </div>
+      <div class="items">
+        ${s.items.map((item, i) => {
+          const id = `${s.id}_${i}`;
+          const checked = !!state[id];
+          const tags = (item.tags || []).map(t => `<span class="tag ${tagMap[t]}">${tagLabel[t]}</span>`).join("");
+          return `<div class="item" onclick="document.getElementById('${id}').click()">
+            <input type="checkbox" id="${id}" ${checked ? "checked" : ""} onclick="event.stopPropagation(); toggle('${id}', this.checked)">
+            <label for="${id}" class="${checked ? 'done' : ''}" onclick="event.preventDefault()">${item.text}${tags}</label>
+          </div>`;
+        }).join("")}
+      </div>`;
+    container.appendChild(div);
+  });
+  updateStats();
+}
+
+render();
+</script>
