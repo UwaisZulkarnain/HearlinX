@@ -156,6 +156,7 @@ class MonthlyReportSummary(BaseModel):
     total_pass: int
     total_refer: int
     total_not_tested: int
+    total_ltfu: int = 0
 
 
 class NationalHospitalSummary(BaseModel):
@@ -165,6 +166,7 @@ class NationalHospitalSummary(BaseModel):
     total_pass: int
     total_refer: int
     total_not_tested: int
+    total_ltfu: int = 0
 
 
 class NationalSummaryOut(BaseModel):
@@ -175,6 +177,7 @@ class NationalSummaryOut(BaseModel):
     total_pass: int
     total_refer: int
     total_not_tested: int
+    total_ltfu: int = 0
     hospitals: list[NationalHospitalSummary]
 
 

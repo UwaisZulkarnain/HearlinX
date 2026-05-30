@@ -25,12 +25,18 @@ def get_monthly_summary(db: Session, hospital_id: str, year: int, month: int):
                 COUNT(s.id) AS total_screenings,
                 COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                 COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
+                COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
             FROM hospitals h
             LEFT JOIN screenings s
                 ON s.hospital_id = h.id
                AND EXTRACT(YEAR FROM s.screening_date) = :year
                AND EXTRACT(MONTH FROM s.screening_date) = :month
+            LEFT JOIN follow_ups f
+                ON f.hospital_id = h.id
+               AND EXTRACT(YEAR FROM f.created_at) = :year
+               AND EXTRACT(MONTH FROM f.created_at) = :month
+               AND f.status = 'lost_to_followup'
             WHERE h.id = :hospital_id
             GROUP BY h.id, h.name
             """
@@ -47,8 +53,13 @@ def get_all_hospitals_monthly_summary(db: Session, year: int, month: int):
                 COUNT(s.id) AS total_screenings,
                 COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                 COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
+                COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
             FROM screenings s
+            LEFT JOIN follow_ups f
+                ON f.created_at >= DATE_TRUNC('month', s.screening_date)
+               AND f.created_at < DATE_TRUNC('month', s.screening_date) + INTERVAL '1 month'
+               AND f.status = 'lost_to_followup'
             WHERE EXTRACT(YEAR FROM s.screening_date) = :year
               AND EXTRACT(MONTH FROM s.screening_date) = :month
             """
@@ -79,6 +90,7 @@ def monthly_report(
             total_pass=summary.total_pass or 0,
             total_refer=summary.total_refer or 0,
             total_not_tested=summary.total_not_tested or 0,
+            total_ltfu=summary.total_ltfu or 0,
         )
 
     summary = get_monthly_summary(db, current_user["hospital_id"], target_year, target_month)
@@ -91,6 +103,7 @@ def monthly_report(
         total_pass=summary.total_pass or 0,
         total_refer=summary.total_refer or 0,
         total_not_tested=summary.total_not_tested or 0,
+        total_ltfu=summary.total_ltfu or 0,
     )
 
 
@@ -115,12 +128,18 @@ def export_report(
                     COUNT(s.id) AS total_screenings,
                     COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                     COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                    COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                    COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
+                    COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
                 FROM hospitals h
                 LEFT JOIN screenings s
                     ON s.hospital_id = h.id
                    AND EXTRACT(YEAR FROM s.screening_date) = :year
                    AND EXTRACT(MONTH FROM s.screening_date) = :month
+                LEFT JOIN follow_ups f
+                    ON f.hospital_id = h.id
+                   AND EXTRACT(YEAR FROM f.created_at) = :year
+                   AND EXTRACT(MONTH FROM f.created_at) = :month
+                   AND f.status = 'lost_to_followup'
                 GROUP BY h.id, h.name
                 ORDER BY h.name ASC
                 """
@@ -131,7 +150,7 @@ def export_report(
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = "All Hospitals Summary"
-        sheet.append(["Hospital", "Year", "Month", "Total Screenings", "Total Pass", "Total Refer", "Total Not Tested"])
+        sheet.append(["Hospital", "Year", "Month", "Total Screenings", "Total Pass", "Total Refer", "Total Not Tested", "Total LTFU"])
         for row in rows:
             sheet.append([
                 row.hospital_name,
@@ -141,6 +160,7 @@ def export_report(
                 row.total_pass or 0,
                 row.total_refer or 0,
                 row.total_not_tested or 0,
+                row.total_ltfu or 0,
             ])
 
         output = BytesIO()
@@ -181,7 +201,7 @@ def export_report(
     workbook = Workbook()
     summary_sheet = workbook.active
     summary_sheet.title = "Monthly Summary"
-    summary_sheet.append(["Hospital", "Year", "Month", "Total Screenings", "Total Pass", "Total Refer", "Total Not Tested"])
+    summary_sheet.append(["Hospital", "Year", "Month", "Total Screenings", "Total Pass", "Total Refer", "Total Not Tested", "Total LTFU"])
     summary_sheet.append([
         summary.hospital_name,
         target_year,
@@ -190,6 +210,7 @@ def export_report(
         summary.total_pass or 0,
         summary.total_refer or 0,
         summary.total_not_tested or 0,
+        summary.total_ltfu or 0,
     ])
 
     details_sheet = workbook.create_sheet("Screenings")
@@ -237,12 +258,18 @@ def national_summary(
                 COUNT(s.id) AS total_screenings,
                 COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                 COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
+                COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
             FROM hospitals h
             LEFT JOIN screenings s
                 ON s.hospital_id = h.id
                AND EXTRACT(YEAR FROM s.screening_date) = :year
                AND EXTRACT(MONTH FROM s.screening_date) = :month
+            LEFT JOIN follow_ups f
+                ON f.hospital_id = h.id
+               AND EXTRACT(YEAR FROM f.created_at) = :year
+               AND EXTRACT(MONTH FROM f.created_at) = :month
+               AND f.status = 'lost_to_followup'
             GROUP BY h.id, h.name
             ORDER BY h.name ASC
             """
@@ -258,6 +285,7 @@ def national_summary(
             total_pass=row.total_pass or 0,
             total_refer=row.total_refer or 0,
             total_not_tested=row.total_not_tested or 0,
+            total_ltfu=row.total_ltfu or 0,
         )
         for row in rows
     ]
@@ -270,5 +298,6 @@ def national_summary(
         total_pass=sum(item.total_pass for item in hospitals),
         total_refer=sum(item.total_refer for item in hospitals),
         total_not_tested=sum(item.total_not_tested for item in hospitals),
+        total_ltfu=sum(item.total_ltfu for item in hospitals),
         hospitals=hospitals,
     )
