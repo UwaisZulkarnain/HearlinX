@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../config/api_config.dart';
+import '../l10n/app_text.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -120,6 +121,10 @@ class _CoordinatorDashboardScreenState
   }
 
   Future<void> _updateFollowUpStatus(String id, String status) async {
+    await _patchFollowUp(id, {'status': status});
+  }
+
+  Future<void> _patchFollowUp(String id, Map<String, dynamic> payload) async {
     try {
       final token = await _authService.getToken();
       if (token == null || token.isEmpty) {
@@ -132,7 +137,7 @@ class _CoordinatorDashboardScreenState
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'status': status}),
+        body: jsonEncode(payload),
       );
 
       if (!mounted) {
@@ -164,11 +169,30 @@ class _CoordinatorDashboardScreenState
     }
   }
 
+  Future<List<_FollowUpEvent>> _fetchFollowUpEvents(String id) async {
+    final token = await _authService.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Sesi telah tamat. Sila log masuk semula.');
+    }
+    final response = await _apiService.client.get(
+      Uri.parse('${_apiService.baseEndpoint}/followups/$id/events'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_parseErrorMessage(response.body));
+    }
+    final payload = jsonDecode(response.body) as List<dynamic>;
+    return payload
+        .map((item) => _FollowUpEvent.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Widget _metricCard(String label, int value, Color color) {
     final gradientColors = {
       AppStyles.accent: const [Color(0xFFB2F1DF), Color(0xFFE0F9F6)],
       AppStyles.success: const [Color(0xFFC6F6D5), Color(0xFFF0FDF4)],
       AppStyles.danger: const [Color(0xFFFECACA), Color(0xFFFEF2F2)],
+      AppStyles.warning: const [Color(0xFFFDE68A), Color(0xFFFFFBEB)],
     };
 
     return Expanded(
@@ -336,6 +360,14 @@ class _CoordinatorDashboardScreenState
               _metricCard(t.refer, _summary.totalRefer, AppStyles.danger),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _metricCard(t.followupQueue, _followUps.length, AppStyles.accent),
+              const SizedBox(width: 12),
+              _metricCard(t.ltfu, _summary.totalLtfu, AppStyles.warning),
+            ],
+          ),
           const SizedBox(height: 18),
           // Additional Info Row
           Row(
@@ -436,6 +468,7 @@ class _CoordinatorDashboardScreenState
                           : DateFormat('d MMM yyyy').format(item.dueDate!);
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
+                        onTap: () => _showFollowUpDetails(item),
                         title: Text(
                           item.babySystemId,
                           style: const TextStyle(
@@ -448,7 +481,16 @@ class _CoordinatorDashboardScreenState
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Tarikh: $dueText'),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text('Tarikh: $dueText'),
+                                _urgencyBadge(item, t),
+                                Text('Status: ${item.status}'),
+                              ],
+                            ),
                             const SizedBox(height: 10),
                             Wrap(
                               spacing: 8,
@@ -473,10 +515,16 @@ class _CoordinatorDashboardScreenState
                                   outlineColor: const Color(0xFFEA580C),
                                 ),
                                 _followUpActionButton(
-                                  t.close,
+                                  t.complete,
                                   item.id,
-                                  'closed',
-                                  outlineColor: const Color(0xFF6B7280),
+                                  'completed',
+                                  outlineColor: AppStyles.success,
+                                ),
+                                _followUpActionButton(
+                                  t.markLtfu,
+                                  item.id,
+                                  'lost_to_followup',
+                                  outlineColor: AppStyles.warning,
                                 ),
                               ],
                             ),
@@ -557,6 +605,220 @@ class _CoordinatorDashboardScreenState
       ),
     );
   }
+
+  Future<void> _showFollowUpDetails(_FollowUpItem item) async {
+    final t = context.read<LanguageProvider>().text;
+    final notesController = TextEditingController(text: item.notes ?? '');
+    final reasonController = TextEditingController(text: item.ltfuReason ?? '');
+    final appointmentController = TextEditingController(
+      text: item.appointmentDate == null
+          ? ''
+          : DateFormat(
+              'yyyy-MM-dd HH:mm',
+            ).format(item.appointmentDate!.toLocal()),
+    );
+    String selectedStatus = item.status;
+
+    try {
+      final events = await _fetchFollowUpEvents(item.id);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 18,
+                  right: 18,
+                  top: 18,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 18,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(t.followupDetails, style: AppStyles.headingStyle),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.babySystemId,
+                        style: const TextStyle(fontFamily: 'monospace'),
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedStatus,
+                        decoration: InputDecoration(labelText: t.status),
+                        items:
+                            const [
+                              'pending',
+                              'contacted',
+                              'appointment_booked',
+                              'escalated',
+                              'completed',
+                              'lost_to_followup',
+                              'closed',
+                            ].map((status) {
+                              return DropdownMenuItem(
+                                value: status,
+                                child: Text(status),
+                              );
+                            }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setModalState(() => selectedStatus = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: appointmentController,
+                        decoration: InputDecoration(
+                          labelText: t.appointmentDate,
+                          hintText: 'yyyy-MM-dd HH:mm',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: reasonController,
+                        decoration: InputDecoration(labelText: t.ltfuReason),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: notesController,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: InputDecoration(labelText: t.notes),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('${t.contactAttempts}: ${item.contactAttempts}'),
+                      const SizedBox(height: 16),
+                      Text(
+                        t.timeline,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      if (events.isEmpty)
+                        const Text(
+                          'No timeline events yet.',
+                          style: TextStyle(color: AppStyles.textSecondary),
+                        )
+                      else
+                        ...events.map(
+                          (event) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            title: Text(
+                              event.action,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            subtitle: Text(
+                              [
+                                if (event.fromStatus != null ||
+                                    event.toStatus != null)
+                                  '${event.fromStatus ?? '-'} -> ${event.toStatus ?? '-'}',
+                                if ((event.notes ?? '').isNotEmpty)
+                                  event.notes!,
+                              ].join('\n'),
+                            ),
+                            trailing: Text(
+                              DateFormat(
+                                'd MMM\nhh:mm a',
+                              ).format(event.createdAt.toLocal()),
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppStyles.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () async {
+                            final payload = <String, dynamic>{
+                              'status': selectedStatus,
+                              'notes': notesController.text.trim().isEmpty
+                                  ? null
+                                  : notesController.text.trim(),
+                              'ltfu_reason':
+                                  reasonController.text.trim().isEmpty
+                                  ? null
+                                  : reasonController.text.trim(),
+                            };
+                            final appointmentText = appointmentController.text
+                                .trim();
+                            if (appointmentText.isNotEmpty) {
+                              payload['appointment_date'] = DateTime.parse(
+                                appointmentText,
+                              ).toIso8601String();
+                            }
+                            Navigator.of(context).pop();
+                            await _patchFollowUp(item.id, payload);
+                          },
+                          child: Text(t.save),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppStyles.danger,
+        ),
+      );
+    } finally {
+      notesController.dispose();
+      reasonController.dispose();
+      appointmentController.dispose();
+    }
+  }
+
+  Widget _urgencyBadge(_FollowUpItem item, AppText t) {
+    final urgency = item.urgency;
+    final (label, color) = switch (urgency) {
+      'ltfu' => (t.ltfu, AppStyles.warning),
+      'red' => (t.redRisk, AppStyles.danger),
+      'amber' => (
+        item.daysOverdue > 0 ? '${t.overdue} ${item.daysOverdue}h' : t.overdue,
+        const Color(0xFFEA580C),
+      ),
+      _ => (t.newFollowup, AppStyles.accent),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 }
 
 class _MonthlySummary {
@@ -567,6 +829,7 @@ class _MonthlySummary {
     this.totalScreenings = 0,
     this.totalPass = 0,
     this.totalRefer = 0,
+    this.totalLtfu = 0,
   });
 
   factory _MonthlySummary.fromJson(Map<String, dynamic> json) {
@@ -577,6 +840,7 @@ class _MonthlySummary {
       totalScreenings: json['total_screenings'] as int? ?? 0,
       totalPass: json['total_pass'] as int? ?? 0,
       totalRefer: json['total_refer'] as int? ?? 0,
+      totalLtfu: json['total_ltfu'] as int? ?? 0,
     );
   }
 
@@ -586,6 +850,7 @@ class _MonthlySummary {
   final int totalScreenings;
   final int totalPass;
   final int totalRefer;
+  final int totalLtfu;
 }
 
 class _FollowUpItem {
@@ -593,6 +858,13 @@ class _FollowUpItem {
     required this.id,
     required this.babySystemId,
     required this.dueDate,
+    required this.status,
+    required this.urgency,
+    required this.daysOverdue,
+    required this.notes,
+    required this.appointmentDate,
+    required this.ltfuReason,
+    required this.contactAttempts,
   });
 
   factory _FollowUpItem.fromJson(Map<String, dynamic> json) {
@@ -602,12 +874,54 @@ class _FollowUpItem {
       dueDate: json['due_date'] == null
           ? null
           : DateTime.parse(json['due_date'] as String),
+      status: json['status'] as String? ?? '',
+      urgency: json['urgency'] as String? ?? 'new',
+      daysOverdue: json['days_overdue'] as int? ?? 0,
+      notes: json['notes'] as String?,
+      appointmentDate: json['appointment_date'] == null
+          ? null
+          : DateTime.parse(json['appointment_date'] as String),
+      ltfuReason: json['ltfu_reason'] as String?,
+      contactAttempts: json['contact_attempts'] as int? ?? 0,
     );
   }
 
   final String id;
   final String babySystemId;
   final DateTime? dueDate;
+  final String status;
+  final String urgency;
+  final int daysOverdue;
+  final String? notes;
+  final DateTime? appointmentDate;
+  final String? ltfuReason;
+  final int contactAttempts;
+}
+
+class _FollowUpEvent {
+  const _FollowUpEvent({
+    required this.action,
+    required this.createdAt,
+    this.fromStatus,
+    this.toStatus,
+    this.notes,
+  });
+
+  factory _FollowUpEvent.fromJson(Map<String, dynamic> json) {
+    return _FollowUpEvent(
+      action: json['action'] as String? ?? '',
+      fromStatus: json['from_status'] as String?,
+      toStatus: json['to_status'] as String?,
+      notes: json['notes'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  final String action;
+  final String? fromStatus;
+  final String? toStatus;
+  final String? notes;
+  final DateTime createdAt;
 }
 
 class _HospitalScreeningItem {

@@ -167,6 +167,16 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
                       _summary.totalNotTested.toString(),
                       AppStyles.warning,
                     ),
+                    _summaryChip(
+                      t.ltfu,
+                      _summary.totalLtfu.toString(),
+                      AppStyles.warning,
+                    ),
+                    _summaryChip(
+                      t.ltfuRate,
+                      '${_summary.ltfuRate.toStringAsFixed(1)}%',
+                      AppStyles.danger,
+                    ),
                   ],
                 ),
               ],
@@ -337,6 +347,7 @@ class _UnhsMonthlySummary {
     this.totalPass = 0,
     this.totalRefer = 0,
     this.totalNotTested = 0,
+    this.totalLtfu = 0,
   });
 
   factory _UnhsMonthlySummary.fromJson(Map<String, dynamic> json) {
@@ -348,6 +359,7 @@ class _UnhsMonthlySummary {
       totalPass: json['total_pass'] as int? ?? 0,
       totalRefer: json['total_refer'] as int? ?? 0,
       totalNotTested: json['total_not_tested'] as int? ?? 0,
+      totalLtfu: json['total_ltfu'] as int? ?? 0,
     );
   }
 
@@ -358,6 +370,9 @@ class _UnhsMonthlySummary {
   final int totalPass;
   final int totalRefer;
   final int totalNotTested;
+  final int totalLtfu;
+
+  double get ltfuRate => totalRefer == 0 ? 0 : (totalLtfu / totalRefer) * 100;
 }
 
 class _AuditItem {

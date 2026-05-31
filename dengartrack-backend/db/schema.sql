@@ -79,11 +79,31 @@ CREATE TABLE follow_ups (
     hospital_id     UUID NOT NULL REFERENCES hospitals(id),
     assigned_to     UUID REFERENCES users(id), -- coordinator
     status          VARCHAR(50) DEFAULT 'pending'
-                    CHECK (status IN ('pending','contacted','scheduled','completed','lost_to_followup')),
+                    CHECK (status IN ('pending','contacted','scheduled','appointment_booked','escalated','completed','closed','lost_to_followup')),
     due_date        DATE,
+    last_contacted_at TIMESTAMPTZ,
+    appointment_date  TIMESTAMPTZ,
+    completed_at      TIMESTAMPTZ,
+    ltfu_reason       VARCHAR(100),
+    contact_attempts  INTEGER DEFAULT 0,
     notes           TEXT,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE follow_ups
+    ADD CONSTRAINT uq_follow_ups_screening UNIQUE (screening_id);
+
+CREATE TABLE follow_up_events (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    follow_up_id    UUID NOT NULL REFERENCES follow_ups(id) ON DELETE CASCADE,
+    user_id         UUID REFERENCES users(id),
+    action          VARCHAR(100) NOT NULL,
+    from_status     VARCHAR(50),
+    to_status       VARCHAR(50),
+    notes           TEXT,
+    metadata        JSONB,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────

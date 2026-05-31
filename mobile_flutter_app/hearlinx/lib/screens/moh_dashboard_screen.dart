@@ -82,7 +82,7 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
     }
   }
 
-  Widget _overviewChip(String label, int value, Color color) {
+  Widget _overviewChip(String label, Object value, Color color) {
     IconData getIcon(String label) {
       if (label.contains('Hospital') || label.contains('Rumah')) {
         return Icons.local_hospital_rounded;
@@ -114,7 +114,7 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
                 Icon(getIcon(label), size: 18, color: color),
                 const SizedBox(width: 6),
                 Text(
-                  '$value',
+                  value.toString(),
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
@@ -183,6 +183,18 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
               _overviewChip(t.pass, _summary.totalPass, AppStyles.success),
               const SizedBox(width: 12),
               _overviewChip(t.refer, _summary.totalRefer, AppStyles.danger),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _overviewChip(t.ltfu, _summary.totalLtfu, AppStyles.warning),
+              const SizedBox(width: 12),
+              _overviewChip(
+                t.ltfuRate,
+                '${_summary.ltfuRate.toStringAsFixed(1)}%',
+                AppStyles.danger,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -310,7 +322,7 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${t.refer} ${hospital.totalRefer}',
+                            '${t.refer} ${hospital.totalRefer}  |  ${t.ltfu} ${hospital.totalLtfu} (${hospital.ltfuRate.toStringAsFixed(1)}%)',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppStyles.danger,
@@ -343,6 +355,7 @@ class _NationalSummary {
     this.totalScreenings = 0,
     this.totalPass = 0,
     this.totalRefer = 0,
+    this.totalLtfu = 0,
     this.hospitals = const [],
   });
 
@@ -352,6 +365,7 @@ class _NationalSummary {
       totalScreenings: json['total_screenings'] as int? ?? 0,
       totalPass: json['total_pass'] as int? ?? 0,
       totalRefer: json['total_refer'] as int? ?? 0,
+      totalLtfu: json['total_ltfu'] as int? ?? 0,
       hospitals: (json['hospitals'] as List<dynamic>? ?? [])
           .map(
             (item) => _NationalHospital.fromJson(item as Map<String, dynamic>),
@@ -364,7 +378,10 @@ class _NationalSummary {
   final int totalScreenings;
   final int totalPass;
   final int totalRefer;
+  final int totalLtfu;
   final List<_NationalHospital> hospitals;
+
+  double get ltfuRate => totalRefer == 0 ? 0 : (totalLtfu / totalRefer) * 100;
 }
 
 class _NationalHospital {
@@ -372,6 +389,7 @@ class _NationalHospital {
     required this.name,
     required this.totalScreenings,
     required this.totalRefer,
+    required this.totalLtfu,
   });
 
   factory _NationalHospital.fromJson(Map<String, dynamic> json) {
@@ -379,10 +397,14 @@ class _NationalHospital {
       name: json['hospital_name'] as String? ?? '',
       totalScreenings: json['total_screenings'] as int? ?? 0,
       totalRefer: json['total_refer'] as int? ?? 0,
+      totalLtfu: json['total_ltfu'] as int? ?? 0,
     );
   }
 
   final String name;
   final int totalScreenings;
   final int totalRefer;
+  final int totalLtfu;
+
+  double get ltfuRate => totalRefer == 0 ? 0 : (totalLtfu / totalRefer) * 100;
 }

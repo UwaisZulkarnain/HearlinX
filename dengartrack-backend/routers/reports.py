@@ -22,23 +22,33 @@ def get_monthly_summary(db: Session, hospital_id: str, year: int, month: int):
             SELECT
                 h.id AS hospital_id,
                 h.name AS hospital_name,
-                COUNT(s.id) AS total_screenings,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
-                COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
+                COALESCE(sc.total_screenings, 0) AS total_screenings,
+                COALESCE(sc.total_pass, 0) AS total_pass,
+                COALESCE(sc.total_refer, 0) AS total_refer,
+                COALESCE(sc.total_not_tested, 0) AS total_not_tested,
+                COALESCE(fc.total_ltfu, 0) AS total_ltfu
             FROM hospitals h
-            LEFT JOIN screenings s
-                ON s.hospital_id = h.id
-               AND EXTRACT(YEAR FROM s.screening_date) = :year
-               AND EXTRACT(MONTH FROM s.screening_date) = :month
-            LEFT JOIN follow_ups f
-                ON f.hospital_id = h.id
-               AND EXTRACT(YEAR FROM f.created_at) = :year
-               AND EXTRACT(MONTH FROM f.created_at) = :month
-               AND f.status = 'lost_to_followup'
+            LEFT JOIN (
+                SELECT
+                    hospital_id,
+                    COUNT(*) AS total_screenings,
+                    COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                    COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
+                    COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                FROM screenings
+                WHERE EXTRACT(YEAR FROM screening_date) = :year
+                  AND EXTRACT(MONTH FROM screening_date) = :month
+                GROUP BY hospital_id
+            ) sc ON sc.hospital_id = h.id
+            LEFT JOIN (
+                SELECT hospital_id, COUNT(*) AS total_ltfu
+                FROM follow_ups
+                WHERE status = 'lost_to_followup'
+                  AND EXTRACT(YEAR FROM updated_at) = :year
+                  AND EXTRACT(MONTH FROM updated_at) = :month
+                GROUP BY hospital_id
+            ) fc ON fc.hospital_id = h.id
             WHERE h.id = :hospital_id
-            GROUP BY h.id, h.name
             """
         ),
         {"hospital_id": hospital_id, "year": year, "month": month},
@@ -50,18 +60,28 @@ def get_all_hospitals_monthly_summary(db: Session, year: int, month: int):
         text(
             """
             SELECT
-                COUNT(s.id) AS total_screenings,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
-                COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
-            FROM screenings s
-            LEFT JOIN follow_ups f
-                ON f.created_at >= DATE_TRUNC('month', s.screening_date)
-               AND f.created_at < DATE_TRUNC('month', s.screening_date) + INTERVAL '1 month'
-               AND f.status = 'lost_to_followup'
-            WHERE EXTRACT(YEAR FROM s.screening_date) = :year
-              AND EXTRACT(MONTH FROM s.screening_date) = :month
+                COALESCE(sc.total_screenings, 0) AS total_screenings,
+                COALESCE(sc.total_pass, 0) AS total_pass,
+                COALESCE(sc.total_refer, 0) AS total_refer,
+                COALESCE(sc.total_not_tested, 0) AS total_not_tested,
+                COALESCE(fc.total_ltfu, 0) AS total_ltfu
+            FROM (
+                SELECT
+                    COUNT(*) AS total_screenings,
+                    COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                    COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
+                    COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                FROM screenings
+                WHERE EXTRACT(YEAR FROM screening_date) = :year
+                  AND EXTRACT(MONTH FROM screening_date) = :month
+            ) sc
+            CROSS JOIN (
+                SELECT COUNT(*) AS total_ltfu
+                FROM follow_ups
+                WHERE status = 'lost_to_followup'
+                  AND EXTRACT(YEAR FROM updated_at) = :year
+                  AND EXTRACT(MONTH FROM updated_at) = :month
+            ) fc
             """
         ),
         {"year": year, "month": month},
@@ -125,22 +145,32 @@ def export_report(
                 """
                 SELECT
                     h.name AS hospital_name,
-                    COUNT(s.id) AS total_screenings,
-                    COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
-                    COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                    COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
-                    COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
+                    COALESCE(sc.total_screenings, 0) AS total_screenings,
+                    COALESCE(sc.total_pass, 0) AS total_pass,
+                    COALESCE(sc.total_refer, 0) AS total_refer,
+                    COALESCE(sc.total_not_tested, 0) AS total_not_tested,
+                    COALESCE(fc.total_ltfu, 0) AS total_ltfu
                 FROM hospitals h
-                LEFT JOIN screenings s
-                    ON s.hospital_id = h.id
-                   AND EXTRACT(YEAR FROM s.screening_date) = :year
-                   AND EXTRACT(MONTH FROM s.screening_date) = :month
-                LEFT JOIN follow_ups f
-                    ON f.hospital_id = h.id
-                   AND EXTRACT(YEAR FROM f.created_at) = :year
-                   AND EXTRACT(MONTH FROM f.created_at) = :month
-                   AND f.status = 'lost_to_followup'
-                GROUP BY h.id, h.name
+                LEFT JOIN (
+                    SELECT
+                        hospital_id,
+                        COUNT(*) AS total_screenings,
+                        COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                        COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
+                        COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                    FROM screenings
+                    WHERE EXTRACT(YEAR FROM screening_date) = :year
+                      AND EXTRACT(MONTH FROM screening_date) = :month
+                    GROUP BY hospital_id
+                ) sc ON sc.hospital_id = h.id
+                LEFT JOIN (
+                    SELECT hospital_id, COUNT(*) AS total_ltfu
+                    FROM follow_ups
+                    WHERE status = 'lost_to_followup'
+                      AND EXTRACT(YEAR FROM updated_at) = :year
+                      AND EXTRACT(MONTH FROM updated_at) = :month
+                    GROUP BY hospital_id
+                ) fc ON fc.hospital_id = h.id
                 ORDER BY h.name ASC
                 """
             ),
@@ -255,22 +285,32 @@ def national_summary(
             SELECT
                 h.id AS hospital_id,
                 h.name AS hospital_name,
-                COUNT(s.id) AS total_screenings,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'pass' OR s.ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                COALESCE(SUM(CASE WHEN s.ear_left = 'not_tested' AND s.ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested,
-                COALESCE(SUM(CASE WHEN f.status = 'lost_to_followup' THEN 1 ELSE 0 END), 0) AS total_ltfu
+                COALESCE(sc.total_screenings, 0) AS total_screenings,
+                COALESCE(sc.total_pass, 0) AS total_pass,
+                COALESCE(sc.total_refer, 0) AS total_refer,
+                COALESCE(sc.total_not_tested, 0) AS total_not_tested,
+                COALESCE(fc.total_ltfu, 0) AS total_ltfu
             FROM hospitals h
-            LEFT JOIN screenings s
-                ON s.hospital_id = h.id
-               AND EXTRACT(YEAR FROM s.screening_date) = :year
-               AND EXTRACT(MONTH FROM s.screening_date) = :month
-            LEFT JOIN follow_ups f
-                ON f.hospital_id = h.id
-               AND EXTRACT(YEAR FROM f.created_at) = :year
-               AND EXTRACT(MONTH FROM f.created_at) = :month
-               AND f.status = 'lost_to_followup'
-            GROUP BY h.id, h.name
+            LEFT JOIN (
+                SELECT
+                    hospital_id,
+                    COUNT(*) AS total_screenings,
+                    COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                    COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
+                    COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                FROM screenings
+                WHERE EXTRACT(YEAR FROM screening_date) = :year
+                  AND EXTRACT(MONTH FROM screening_date) = :month
+                GROUP BY hospital_id
+            ) sc ON sc.hospital_id = h.id
+            LEFT JOIN (
+                SELECT hospital_id, COUNT(*) AS total_ltfu
+                FROM follow_ups
+                WHERE status = 'lost_to_followup'
+                  AND EXTRACT(YEAR FROM updated_at) = :year
+                  AND EXTRACT(MONTH FROM updated_at) = :month
+                GROUP BY hospital_id
+            ) fc ON fc.hospital_id = h.id
             ORDER BY h.name ASC
             """
         ),

@@ -133,7 +133,14 @@ class FollowUpOut(BaseModel):
     assigned_to: Optional[uuid.UUID]
     status: str
     due_date: Optional[date]
+    last_contacted_at: Optional[datetime] = None
+    appointment_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    ltfu_reason: Optional[str] = None
+    contact_attempts: int = 0
     notes: Optional[str]
+    urgency: Optional[str] = None
+    days_overdue: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -142,9 +149,30 @@ class FollowUpOut(BaseModel):
 
 
 class FollowUpUpdate(BaseModel):
-    status: FollowUpStatus
+    status: Optional[FollowUpStatus] = None
     notes: Optional[str] = None
     due_date: Optional[date] = None
+    last_contacted_at: Optional[datetime] = None
+    appointment_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    ltfu_reason: Optional[str] = None
+    contact_attempts: Optional[int] = None
+
+
+class FollowUpEventOut(BaseModel):
+    id: uuid.UUID
+    follow_up_id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    actor_name: Optional[str] = None
+    action: str
+    from_status: Optional[str] = None
+    to_status: Optional[str] = None
+    notes: Optional[str] = None
+    metadata: Optional[dict] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class MonthlyReportSummary(BaseModel):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import uuid
 import json
 
@@ -10,6 +10,7 @@ from auth.dependencies import get_current_user, screener_only
 from db.database import get_db
 
 router = APIRouter(prefix="/screenings", tags=["screenings"])
+FOLLOW_UP_DUE_DAYS = 14
 
 def write_audit_log(db: Session, user_id: str, action: str, table_name: str, record_id: str, new_values: dict):
     """Helper function to write to audit log."""
@@ -23,7 +24,93 @@ def write_audit_log(db: Session, user_id: str, action: str, table_name: str, rec
         "record_id": record_id,
         "new_values": json.dumps(new_values)
     })
-    db.commit()
+
+
+def create_follow_up_for_refer(
+    db: Session,
+    screening: ScreeningCreate,
+    screening_id: str,
+    hospital_id: str,
+    actor_user_id: str,
+):
+    """Create one pending follow-up task for a RUJUK screening."""
+    has_refer_result = (
+        screening.ear_left.value == "refer" or screening.ear_right.value == "refer"
+    )
+    if not has_refer_result:
+        return
+
+    existing = db.execute(
+        text("SELECT id FROM follow_ups WHERE screening_id = :screening_id"),
+        {"screening_id": screening_id},
+    ).fetchone()
+    if existing:
+        return
+
+    follow_up_id = str(uuid.uuid4())
+    due_date = date.today() + timedelta(days=FOLLOW_UP_DUE_DAYS)
+
+    db.execute(
+        text(
+            """
+            INSERT INTO follow_ups (
+                id, baby_id, screening_id, hospital_id, status, due_date, created_at, updated_at
+            )
+            VALUES (
+                :id, :baby_id, :screening_id, :hospital_id, 'pending', :due_date, NOW(), NOW()
+            )
+            """
+        ),
+        {
+            "id": follow_up_id,
+            "baby_id": str(screening.baby_id),
+            "screening_id": screening_id,
+            "hospital_id": hospital_id,
+            "due_date": due_date,
+        },
+    )
+
+    write_audit_log(
+        db,
+        actor_user_id,
+        "CREATE",
+        "follow_ups",
+        follow_up_id,
+        {
+            "baby_id": str(screening.baby_id),
+            "screening_id": screening_id,
+            "hospital_id": hospital_id,
+            "status": "pending",
+            "due_date": str(due_date),
+            "reason": "RUJUK screening result",
+        },
+    )
+    db.connection().exec_driver_sql(
+        """
+        INSERT INTO follow_up_events (
+            id, follow_up_id, user_id, action, from_status, to_status, notes, metadata, created_at
+        )
+        VALUES (
+            %(id)s, %(follow_up_id)s, %(user_id)s, %(action)s,
+            NULL, %(to_status)s, %(notes)s, CAST(%(metadata)s AS jsonb), NOW()
+        )
+        """,
+        {
+            "id": str(uuid.uuid4()),
+            "follow_up_id": follow_up_id,
+            "user_id": actor_user_id,
+            "action": "created_from_rujuk",
+            "to_status": "pending",
+            "notes": "Follow-up created automatically from RUJUK screening",
+            "metadata": json.dumps(
+                {
+                    "screening_id": screening_id,
+                    "baby_id": str(screening.baby_id),
+                    "due_date": str(due_date),
+                }
+            ),
+        },
+    )
 
 @router.post("/", response_model=ScreeningOut, status_code=status.HTTP_201_CREATED)
 def create_screening(
@@ -88,6 +175,7 @@ def create_screening(
         "notes": screening.notes
     }
     write_audit_log(db, screener_id, "CREATE", "screenings", screening_id, audit_data)
+    create_follow_up_for_refer(db, screening, screening_id, hospital_id, screener_id)
     
     db.commit()
     
