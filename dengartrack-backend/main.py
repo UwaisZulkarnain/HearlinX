@@ -16,7 +16,7 @@ from routers.screenings import router as screenings_router
 from routers.users import router as users_router
 
 app = FastAPI(
-    title="HearLinX API", 
+    title="DengarTrack API", 
     version="1.0.0",
     generate_unique_id_function=lambda route: route.name
 )
@@ -42,4 +42,4 @@ app.include_router(users_router, prefix="/users")
 
 @app.get("/")
 def root():
-    return {"message": "HearLinX API running", "version": "1.0.0"}
+    return {"message": "DengarTrack API running", "version": "1.0.0"}

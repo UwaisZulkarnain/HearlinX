@@ -52,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
   static const _backgroundColor = Color(0xFF1A3C40);
   static const _accentColor = Color(0xFF18C7A5);
   static const _fieldBorderColor = Color(0xFFD9E8EB);
-  static const _subtitleColor = Color(0xFF5FCABB);
 
   final _formKey = GlobalKey<FormState>();
   final _staffIdController = TextEditingController();
@@ -78,13 +77,20 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  InputDecoration _inputDecoration(String hintText) {
+  InputDecoration _inputDecoration(String hintText, {bool isDropdown = false}) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: const TextStyle(color: Color(0xFF92A5AB), fontSize: 16),
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      prefixIcon: isDropdown
+          ? const Icon(
+              Icons.local_hospital_rounded,
+              color: _accentColor,
+              size: 22,
+            )
+          : null,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: _fieldBorderColor),
@@ -95,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _accentColor, width: 1.5),
+        borderSide: const BorderSide(color: _accentColor, width: 2),
       ),
     );
   }
@@ -132,7 +138,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final response = await http.get(Uri.parse('$baseUrl/hospitals/'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/hospitals/'),
+      );
 
       if (!mounted) {
         return;
@@ -208,235 +216,297 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 390),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    const Text(
-                      'HearLinX',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      t.appSubtitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: _subtitleColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Text(
-                      t.welcome,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      t.subtitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Text(
-                      t.hospital,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_isFetchingHospitals)
-                      const SizedBox(
-                        height: 56,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _accentColor,
+      body: Stack(
+        children: [
+          if (_isLoading)
+            const LinearProgressIndicator(
+              minHeight: 2,
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
+            ),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 20,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 390),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: _accentColor.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.headphones_rounded,
+                            color: _accentColor,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [Colors.white, Color(0xFF9AF3E2)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'DengarTrack',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 40,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
                             ),
                           ),
                         ),
-                      )
-                    else if (_hospitalError != null)
-                      Text(
-                        _hospitalError!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        const SizedBox(height: 8),
+                        Text(
+                          t.appSubtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _accentColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
                         ),
-                      )
-                    else
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedHospitalCode,
-                        decoration: _inputDecoration(t.selectHospital),
-                        dropdownColor: Colors.white,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                        items: _hospitals
-                            .map(
-                              (hospital) => DropdownMenuItem<String>(
-                                value: hospital.code,
-                                child: SizedBox(
-                                  width: 200,
-                                  child: Text(
-                                    hospital.label,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
+                        const SizedBox(height: 28),
+                        Text(
+                          t.welcome,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          t.subtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        Text(
+                          t.hospital,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_isFetchingHospitals)
+                          const SizedBox(
+                            height: 56,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  _accentColor,
                                 ),
                               ),
-                            )
-                            .toList(),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return t.selectHospital;
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setState(() {
-                            _selectedHospitalCode = value;
-                          });
-                        },
-                      ),
-                    const SizedBox(height: 26),
-                    Text(
-                      t.staffId,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _staffIdController,
-                      decoration: _inputDecoration(t.enterStaffId),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return t.enterStaffId;
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 26),
-                    Text(
-                      t.pin,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _pinController,
-                      obscureText: true,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(fontSize: 18, letterSpacing: 3),
-                      decoration: _inputDecoration('••••••'),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return t.enterPin;
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 26),
-                    Row(
-                      children: [
-                        _languageToggle('BM', 'ms'),
-                        const SizedBox(width: 18),
-                        _languageToggle('EN', 'en'),
+                            ),
+                          )
+                        else if (_hospitalError != null)
+                          Text(
+                            _hospitalError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedHospitalCode,
+                            decoration: _inputDecoration(
+                              t.selectHospital,
+                              isDropdown: true,
+                            ),
+                            dropdownColor: Colors.white,
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                            items: _hospitals
+                                .map(
+                                  (hospital) => DropdownMenuItem<String>(
+                                    value: hospital.code,
+                                    child: Text(
+                                      hospital.label,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return t.selectHospital;
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              setState(() {
+                                _selectedHospitalCode = value;
+                              });
+                            },
+                          ),
+                        const SizedBox(height: 26),
+                        Text(
+                          t.staffId,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _staffIdController,
+                          decoration: _inputDecoration(t.enterStaffId),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return t.enterStaffId;
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 26),
+                        Text(
+                          t.pin,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _pinController,
+                          obscureText: true,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: const TextStyle(
+                            fontSize: 18,
+                            letterSpacing: 3,
+                          ),
+                          decoration: _inputDecoration('••••••'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return t.enterPin;
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 26),
+                        Row(
+                          children: [
+                            _languageToggle('BM', 'ms'),
+                            const SizedBox(width: 18),
+                            _languageToggle('EN', 'en'),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 60,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [_accentColor, const Color(0xFF0D9E8A)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: ElevatedButton(
+                              onPressed:
+                                  _isLoading ||
+                                      _isFetchingHospitals ||
+                                      _selectedHospitalCode == null
+                                  ? null
+                                  : _submitLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.transparent,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Text(
+                                      t.signIn,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        GestureDetector(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(t.forgotPin)),
+                            );
+                          },
+                          child: Text(
+                            t.forgotPin,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _accentColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              height: 1.5,
+                              decoration: TextDecoration.underline,
+                              decorationColor: _accentColor,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 60,
-                      child: ElevatedButton(
-                        onPressed:
-                            _isLoading ||
-                                _isFetchingHospitals ||
-                                _selectedHospitalCode == null
-                            ? null
-                            : _submitLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _accentColor,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: _accentColor.withValues(
-                            alpha: 0.65,
-                          ),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : Text(
-                                t.signIn,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    Text(
-                      t.forgotPin,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

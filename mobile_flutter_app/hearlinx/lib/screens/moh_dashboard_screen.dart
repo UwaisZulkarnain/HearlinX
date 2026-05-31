@@ -44,7 +44,7 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/reports/national-summary'),
+        Uri.parse('${ApiConfig.baseUrl}/reports/national-summary'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -83,20 +83,45 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
   }
 
   Widget _overviewChip(String label, int value, Color color) {
+    IconData getIcon(String label) {
+      if (label.contains('Hospital') || label.contains('Rumah')) {
+        return Icons.local_hospital_rounded;
+      } else if (label.contains('Screening') || label.contains('Saringan')) {
+        return Icons.person_search_rounded;
+      } else if (label.contains('Pass') || label.contains('Lulus')) {
+        return Icons.check_circle_rounded;
+      } else if (label.contains('Refer') || label.contains('Rujuk')) {
+        return Icons.arrow_forward_rounded;
+      }
+      return Icons.info_rounded;
+    }
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: AppStyles.surfaceCard(color: color.withValues(alpha: 0.08)),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: const Border(
+            left: BorderSide(color: Color(0xFF18C7A5), width: 3),
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
+            Row(
+              children: [
+                Icon(getIcon(label), size: 18, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  '$value',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
@@ -164,25 +189,24 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
           // Last Updated
           if (_lastUpdatedTime != null)
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: AppStyles.surfaceCard(),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18C7A5),
+                borderRadius: BorderRadius.circular(999),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    t.lastUpdated,
-                    style: const TextStyle(
-                      color: AppStyles.textSecondary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
+                  const Icon(
+                    Icons.access_time_rounded,
+                    size: 14,
+                    color: Colors.white,
                   ),
+                  const SizedBox(width: 6),
                   Text(
-                    DateFormat(
-                      'dd MMM yyyy, hh:mm a',
-                    ).format(_lastUpdatedTime!.toLocal()),
+                    '${t.lastUpdated}: ${DateFormat('dd MMM yyyy, hh:mm a').format(_lastUpdatedTime!.toLocal())}',
                     style: const TextStyle(
-                      color: AppStyles.textPrimary,
+                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -193,7 +217,20 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: AppStyles.surfaceCard(),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: const Border(
+                left: BorderSide(color: Color(0xFF18C7A5), width: 3),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -213,32 +250,74 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
                 else
                   ..._summary.hospitals.map((hospital) {
                     final coverageRate = _summary.totalScreenings > 0
-                        ? ((hospital.totalScreenings /
-                                      _summary.totalScreenings) *
-                                  100)
-                              .toStringAsFixed(1)
-                        : '0';
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        hospital.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        '${t.screening}: ${hospital.totalScreenings} (${coverageRate}%)',
-                      ),
-                      trailing: SizedBox(
-                        width: 88,
-                        child: Text(
-                          '${t.refer} ${hospital.totalRefer}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            color: AppStyles.danger,
-                            fontWeight: FontWeight.w700,
+                        ? (hospital.totalScreenings /
+                                  _summary.totalScreenings) *
+                              100
+                        : 0.0;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      hospital.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${t.screening}: ${hospital.totalScreenings}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppStyles.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${coverageRate.toStringAsFixed(1)}%',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: Color(0xFF18C7A5),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: coverageRate / 100,
+                              minHeight: 6,
+                              backgroundColor: Colors.grey[200],
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Color(0xFF18C7A5),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${t.refer} ${hospital.totalRefer}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppStyles.danger,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }),

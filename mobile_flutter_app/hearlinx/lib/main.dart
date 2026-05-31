@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import 'config/api_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/language_provider.dart';
 import 'screens/coordinator_dashboard_screen.dart';
@@ -12,7 +14,12 @@ import 'screens/screening_entry_screen.dart';
 import 'screens/shift_summary_screen.dart';
 import 'screens/unhs_dashboard_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize API config with smart URL detection
+  await ApiConfig.initialize();
+
   runApp(const HearLinxApp());
 }
 
@@ -31,7 +38,7 @@ class HearLinxApp extends StatelessWidget {
       child: Consumer<LanguageProvider>(
         builder: (context, languageProvider, _) {
           return MaterialApp(
-            title: 'HearLinX',
+            title: 'DengarTrack',
             debugShowCheckedModeBanner: false,
             locale: languageProvider.locale,
             localizationsDelegates: const [
@@ -44,6 +51,7 @@ class HearLinxApp extends StatelessWidget {
               colorScheme: ColorScheme.fromSeed(
                 seedColor: const Color(0xFF0D7C8A),
               ),
+              textTheme: GoogleFonts.poppinsTextTheme(),
             ),
             routes: {
               '/login': (_) => const LoginScreen(),

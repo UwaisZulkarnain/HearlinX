@@ -101,6 +101,49 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _formatDateTime(DateTime dateTime) {
+    final languageProvider = context.read<LanguageProvider>();
+    final isBm = languageProvider.lang == 'ms';
+
+    final months = isBm
+        ? [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'Mei',
+            'Jun',
+            'Jul',
+            'Agu',
+            'Sep',
+            'Okt',
+            'Nov',
+            'Dis',
+          ]
+        : [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+
+    final day = dateTime.day;
+    final month = months[dateTime.month - 1];
+    final year = dateTime.year;
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return '$day $month $year • $hour:$minute';
+  }
+
   Widget _buildActionButton({
     required IconData icon,
     required String label,
@@ -111,11 +154,19 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 22),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+        label: Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, size: 18),
+            ],
           ),
         ),
         style: AppStyles.primaryButtonStyle(),
@@ -132,7 +183,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildActionButton(
             icon: Icons.post_add_rounded,
             label: t.newScreening,
-            onPressed: () => Navigator.of(context).pushNamed('/screening-entry'),
+            onPressed: () =>
+                Navigator.of(context).pushNamed('/screening-entry'),
           ),
           const SizedBox(height: 14),
           _buildActionButton(
@@ -146,7 +198,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildActionButton(
             icon: Icons.space_dashboard_rounded,
             label: t.hospitalDashboard,
-            onPressed: () => Navigator.of(context).pushNamed('/coordinator-dashboard'),
+            onPressed: () =>
+                Navigator.of(context).pushNamed('/coordinator-dashboard'),
           ),
         ];
       case User.roleUnhsCoordinator:
@@ -175,32 +228,46 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasPending = _pendingSyncCount > 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: hasPending
             ? AppStyles.warning.withValues(alpha: 0.12)
             : AppStyles.success.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasPending
+              ? AppStyles.warning.withValues(alpha: 0.3)
+              : AppStyles.success.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             hasPending ? Icons.sync_problem_rounded : Icons.cloud_done_rounded,
             color: hasPending ? AppStyles.warning : AppStyles.success,
-            size: 18,
+            size: 20,
           ),
-          const SizedBox(width: 8),
-          Flexible(
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
               hasPending ? '$_pendingSyncCount ${t.pendingSync}' : t.allSaved,
               style: TextStyle(
                 color: hasPending ? AppStyles.warning : AppStyles.success,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
+          if (hasPending)
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: AppStyles.warning,
+                shape: BoxShape.circle,
+              ),
+            ),
         ],
       ),
     );
@@ -215,14 +282,27 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppStyles.background,
       appBar: AppBar(
-        backgroundColor: AppStyles.brand,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0D6E63), Color(0xFF1A9B87)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'HearLinX',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'DengarTrack',
+            maxLines: 1,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
           ),
         ),
         actions: [
@@ -246,91 +326,130 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : user == null
-              ? Center(
-                  child: Text(
-                    t.userLoadError,
-                    style: const TextStyle(color: AppStyles.textSecondary),
-                  ),
-                )
-              : SafeArea(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: AppStyles.formPagePadding,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 460),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(22),
-                              decoration: AppStyles.surfaceCard(),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    t.welcomeHome,
-                                    style: TextStyle(
-                                      color: AppStyles.textSecondary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    user.fullName.isEmpty ? user.staffId : user.fullName,
-                                    style: const TextStyle(
-                                      color: AppStyles.textPrimary,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.2,
-                                    ),
-                                    softWrap: true,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                    decoration: BoxDecoration(
-                                      color: AppStyles.accent.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      _roleLabel(user.role),
-                                      style: const TextStyle(
-                                        color: AppStyles.brand,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildSyncStatus(),
-                                ],
+          ? Center(
+              child: Text(
+                t.userLoadError,
+                style: const TextStyle(color: AppStyles.textSecondary),
+              ),
+            )
+          : SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: AppStyles.formPagePadding,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE8F8F5), Colors.white],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: const Border(
+                              left: BorderSide(
+                                color: Color(0xFF18C7A5),
+                                width: 4,
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            ..._buildRoleActions(user),
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _logout,
-                                icon: const Icon(Icons.logout_rounded),
-                                label: Text(
-                                  t.logout,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF18C7A5,
+                                ).withValues(alpha: 0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.welcomeHome,
+                                style: TextStyle(
+                                  color: AppStyles.textSecondary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                user.fullName.isEmpty
+                                    ? user.staffId
+                                    : user.fullName,
+                                style: const TextStyle(
+                                  color: AppStyles.textPrimary,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                ),
+                                softWrap: true,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatDateTime(DateTime.now()),
+                                style: TextStyle(
+                                  color: AppStyles.textSecondary.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF18C7A5),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  _roleLabel(user.role),
                                   style: const TextStyle(
-                                    fontSize: 16,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.w700,
+                                    fontSize: 13,
                                   ),
                                 ),
-                                style: AppStyles.outlineButtonStyle(),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildSyncStatus(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ..._buildRoleActions(user),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _logout,
+                            icon: const Icon(Icons.logout_rounded),
+                            label: Text(
+                              t.logout,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
+                            style: AppStyles.outlineButtonStyle(),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
+              ),
+            ),
     );
   }
 }

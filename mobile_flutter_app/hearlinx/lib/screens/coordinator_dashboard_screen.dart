@@ -55,10 +55,16 @@ class _CoordinatorDashboardScreenState
       final displayName = await _authService.getDisplayName();
 
       final responses = await Future.wait([
-        http.get(Uri.parse('$baseUrl/reports/monthly'), headers: headers),
-        http.get(Uri.parse('$baseUrl/followups/'), headers: headers),
         http.get(
-          Uri.parse('$baseUrl/screenings/?today=true'),
+          Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
+          headers: headers,
+        ),
+        http.get(
+          Uri.parse('${ApiConfig.baseUrl}/followups/'),
+          headers: headers,
+        ),
+        http.get(
+          Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
           headers: headers,
         ),
       ]);
@@ -159,12 +165,27 @@ class _CoordinatorDashboardScreenState
   }
 
   Widget _metricCard(String label, int value, Color color) {
+    final gradientColors = {
+      AppStyles.accent: const [Color(0xFFB2F1DF), Color(0xFFE0F9F6)],
+      AppStyles.success: const [Color(0xFFC6F6D5), Color(0xFFF0FDF4)],
+      AppStyles.danger: const [Color(0xFFFECACA), Color(0xFFFEF2F2)],
+    };
+
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: AppStyles.surfaceCard(),
+        padding: const EdgeInsets.all(14),
+        height: 120,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors[color] ?? [Colors.white, Colors.white],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
               width: 8,
@@ -174,25 +195,29 @@ class _CoordinatorDashboardScreenState
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              '$value',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppStyles.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                color: AppStyles.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$value',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: AppStyles.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppStyles.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ],
         ),
@@ -204,7 +229,20 @@ class _CoordinatorDashboardScreenState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: AppStyles.surfaceCard(),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: const Border(
+          left: BorderSide(color: Color(0xFF18C7A5), width: 3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -241,6 +279,9 @@ class _CoordinatorDashboardScreenState
     if (_errorMessage != null) {
       return RefreshIndicator(
         onRefresh: _loadData,
+        color: const Color(0xFF18C7A5),
+        backgroundColor: Colors.white,
+        strokeWidth: 2.5,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24),
@@ -258,6 +299,9 @@ class _CoordinatorDashboardScreenState
 
     return RefreshIndicator(
       onRefresh: _loadData,
+      color: const Color(0xFF18C7A5),
+      backgroundColor: Colors.white,
+      strokeWidth: 2.5,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: AppStyles.pagePadding,
@@ -266,8 +310,8 @@ class _CoordinatorDashboardScreenState
           Text(
             t.welcomeGreeting(_coordinatorName),
             style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
               color: AppStyles.textPrimary,
             ),
           ),
@@ -303,13 +347,23 @@ class _CoordinatorDashboardScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        t.lastScreening,
-                        style: const TextStyle(
-                          color: AppStyles.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            size: 16,
+                            color: Color(0xFF18C7A5),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            t.lastScreening,
+                            style: const TextStyle(
+                              color: AppStyles.textSecondary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -332,15 +386,25 @@ class _CoordinatorDashboardScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        t.activeScreeners,
-                        style: const TextStyle(
-                          color: AppStyles.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.people_rounded,
+                            size: 16,
+                            color: Color(0xFF18C7A5),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            t.activeScreeners,
+                            style: const TextStyle(
+                              color: AppStyles.textSecondary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -374,7 +438,12 @@ class _CoordinatorDashboardScreenState
                         contentPadding: EdgeInsets.zero,
                         title: Text(
                           item.babySystemId,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,21 +458,25 @@ class _CoordinatorDashboardScreenState
                                   t.markContacted,
                                   item.id,
                                   'contacted',
+                                  outlineColor: const Color(0xFF18C7A5),
                                 ),
                                 _followUpActionButton(
                                   t.bookAppointment,
                                   item.id,
                                   'appointment_booked',
+                                  outlineColor: const Color(0xFF2563EB),
                                 ),
                                 _followUpActionButton(
                                   t.escalate,
                                   item.id,
                                   'escalated',
+                                  outlineColor: const Color(0xFFEA580C),
                                 ),
                                 _followUpActionButton(
                                   t.close,
                                   item.id,
                                   'closed',
+                                  outlineColor: const Color(0xFF6B7280),
                                 ),
                               ],
                             ),
@@ -464,15 +537,24 @@ class _CoordinatorDashboardScreenState
     return AppShell(title: t.hospitalDashboard, child: _buildBody());
   }
 
-  Widget _followUpActionButton(String label, String id, String status) {
+  Widget _followUpActionButton(
+    String label,
+    String id,
+    String status, {
+    Color outlineColor = const Color(0xFF18C7A5),
+  }) {
     return OutlinedButton(
       onPressed: () => _updateFollowUpStatus(id, status),
-      style: AppStyles.outlineButtonStyle().copyWith(
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        ),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: outlineColor, width: 1.5),
+        foregroundColor: outlineColor,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      child: Text(label),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }

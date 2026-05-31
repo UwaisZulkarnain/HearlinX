@@ -45,8 +45,14 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
 
       final headers = {'Authorization': 'Bearer $token'};
       final responses = await Future.wait([
-        http.get(Uri.parse('$baseUrl/reports/monthly'), headers: headers),
-        http.get(Uri.parse('$baseUrl/audit-logs/recent'), headers: headers),
+        http.get(
+          Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
+          headers: headers,
+        ),
+        http.get(
+          Uri.parse('${ApiConfig.baseUrl}/audit-logs/recent'),
+          headers: headers,
+        ),
       ]);
 
       for (final response in responses) {
@@ -64,7 +70,9 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
 
       setState(() {
         _summary = _UnhsMonthlySummary.fromJson(summaryJson);
-        _auditItems = auditJson.map((item) => _AuditItem.fromJson(item as Map<String, dynamic>)).toList();
+        _auditItems = auditJson
+            .map((item) => _AuditItem.fromJson(item as Map<String, dynamic>))
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -95,7 +103,12 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
     }
 
     if (_errorMessage != null) {
-      return Center(child: Text(_errorMessage!, style: const TextStyle(color: AppStyles.textSecondary)));
+      return Center(
+        child: Text(
+          _errorMessage!,
+          style: const TextStyle(color: AppStyles.textSecondary),
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -106,7 +119,20 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: AppStyles.surfaceCard(),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: const Border(
+                left: BorderSide(color: Color(0xFF18C7A5), width: 3),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -121,10 +147,26 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _summaryChip(t.totalScreenings, _summary.totalScreenings.toString(), AppStyles.accent),
-                    _summaryChip(t.pass, _summary.totalPass.toString(), AppStyles.success),
-                    _summaryChip(t.refer, _summary.totalRefer.toString(), AppStyles.danger),
-                    _summaryChip(t.notTested, _summary.totalNotTested.toString(), AppStyles.warning),
+                    _summaryChip(
+                      t.totalScreenings,
+                      _summary.totalScreenings.toString(),
+                      AppStyles.accent,
+                    ),
+                    _summaryChip(
+                      t.pass,
+                      _summary.totalPass.toString(),
+                      AppStyles.success,
+                    ),
+                    _summaryChip(
+                      t.refer,
+                      _summary.totalRefer.toString(),
+                      AppStyles.danger,
+                    ),
+                    _summaryChip(
+                      t.notTested,
+                      _summary.totalNotTested.toString(),
+                      AppStyles.warning,
+                    ),
                   ],
                 ),
               ],
@@ -133,30 +175,81 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: AppStyles.surfaceCard(),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: const Border(
+                left: BorderSide(color: Color(0xFF18C7A5), width: 3),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t.recentAudit, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Text(
+                  t.recentAudit,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 if (_auditItems.isEmpty)
-                  Text(t.noAudit, style: const TextStyle(color: AppStyles.textSecondary))
+                  Text(
+                    t.noAudit,
+                    style: const TextStyle(color: AppStyles.textSecondary),
+                  )
                 else
-                  ..._auditItems.map((item) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(item.actorName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('${item.action} \u2022 ${item.tableName}'),
-                        trailing: SizedBox(
-                          width: 92,
-                          child: Text(
-                            DateFormat('d MMM, hh:mm a').format(item.createdAt.toLocal()),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(color: AppStyles.textSecondary, fontSize: 12),
+                  ..._auditItems.map((item) {
+                    Color getActionDotColor(String action) {
+                      if (action.contains('CREATE')) {
+                        return const Color(0xFF26D07C);
+                      } else if (action.contains('UPDATE')) {
+                        return const Color(0xFF2563EB);
+                      } else if (action.contains('DEACTIVATE')) {
+                        return const Color(0xFFE85D75);
+                      }
+                      return const Color(0xFF6B7C85);
+                    }
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: getActionDotColor(item.action),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      title: Text(
+                        item.actorName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text('${item.action} \u2022 ${item.tableName}'),
+                      trailing: SizedBox(
+                        width: 92,
+                        child: Text(
+                          DateFormat(
+                            'd MMM, hh:mm a',
+                          ).format(item.createdAt.toLocal()),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            color: AppStyles.textSecondary,
+                            fontSize: 12,
                           ),
                         ),
-                      )),
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
@@ -166,19 +259,62 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
   }
 
   Widget _summaryChip(String label, String value, Color color) {
+    final gradientColors = {
+      AppStyles.accent: const [Color(0xFFB2F1DF), Color(0xFFE0F9F6)],
+      AppStyles.success: const [Color(0xFFC6F6D5), Color(0xFFF0FDF4)],
+      AppStyles.danger: const [Color(0xFFFECACA), Color(0xFFFEF2F2)],
+      AppStyles.warning: const [Color(0xFFFDE68A), Color(0xFFFEF9C3)],
+    };
+
+    IconData getIcon(String label) {
+      if (label.contains('Screening') || label.contains('Saringan')) {
+        return Icons.person_search_rounded;
+      } else if (label.contains('Pass') || label.contains('Lulus')) {
+        return Icons.check_circle_rounded;
+      } else if (label.contains('Refer') || label.contains('Rujuk')) {
+        return Icons.arrow_forward_rounded;
+      } else if (label.contains('Not') || label.contains('Belum')) {
+        return Icons.help_outline_rounded;
+      }
+      return Icons.info_rounded;
+    }
+
     return Container(
-      width: 150,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          colors: gradientColors[color] ?? [Colors.white, Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: AppStyles.textSecondary, fontWeight: FontWeight.w600)),
+          Row(
+            children: [
+              Icon(getIcon(label), size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppStyles.textSecondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
@@ -188,10 +324,7 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
   Widget build(BuildContext context) {
     final t = context.watch<LanguageProvider>().text;
 
-    return AppShell(
-      title: t.unhsDashboard,
-      child: _body(),
-    );
+    return AppShell(title: t.unhsDashboard, child: _body());
   }
 }
 

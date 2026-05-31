@@ -166,7 +166,7 @@ def export_report(
         output = BytesIO()
         workbook.save(output)
         output.seek(0)
-        filename = f"hearlinx-all-hospitals-summary-{target_year:04d}-{target_month:02d}.xlsx"
+        filename = f"dengartrack-all-hospitals-summary-{target_year:04d}-{target_month:02d}.xlsx"
 
         return StreamingResponse(
             output,
@@ -229,7 +229,7 @@ def export_report(
     output = BytesIO()
     workbook.save(output)
     output.seek(0)
-    filename = f"hearlinx-report-{target_year:04d}-{target_month:02d}.xlsx"
+    filename = f"dengartrack-report-{target_year:04d}-{target_month:02d}.xlsx"
 
     return StreamingResponse(
         output,

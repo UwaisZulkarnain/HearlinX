@@ -7,11 +7,9 @@ import '../config/api_config.dart';
 import '../models/user.dart';
 
 class AuthService {
-  AuthService({
-    FlutterSecureStorage? storage,
-    http.Client? client,
-  })  : _storage = storage ?? const FlutterSecureStorage(),
-        _client = client ?? http.Client();
+  AuthService({FlutterSecureStorage? storage, http.Client? client})
+    : _storage = storage ?? const FlutterSecureStorage(),
+      _client = client ?? http.Client();
 
   final FlutterSecureStorage _storage;
   final http.Client _client;
@@ -89,7 +87,7 @@ class AuthService {
     }
 
     final response = await _client.get(
-      Uri.parse('$baseUrl/auth/me'),
+      Uri.parse('${ApiConfig.baseUrl}/auth/me'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -107,10 +105,8 @@ class AuthService {
     required String pin,
   }) async {
     final response = await _client.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: const {
-        'Content-Type': 'application/json',
-      },
+      Uri.parse('${ApiConfig.baseUrl}/auth/login'),
+      headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({
         'staff_id': staffId,
         'pin': pin,

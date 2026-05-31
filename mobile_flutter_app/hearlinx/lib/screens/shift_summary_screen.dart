@@ -19,7 +19,6 @@ class ShiftSummaryScreen extends StatefulWidget {
 }
 
 class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
-  static const _tealColor = Color(0xFF0D6E63);
   static const _accentColor = Color(0xFF17B8A1);
   static const _backgroundColor = Color(0xFFF6FAF9);
   static const _dangerColor = Color(0xFFE85D75);
@@ -53,11 +52,11 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
       final headers = {'Authorization': 'Bearer $token'};
       final responses = await Future.wait([
         http.get(
-          Uri.parse('$baseUrl/screenings/shift-summary/today'),
+          Uri.parse('${ApiConfig.baseUrl}/screenings/shift-summary/today'),
           headers: headers,
         ),
         http.get(
-          Uri.parse('$baseUrl/screenings/?today=true'),
+          Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
           headers: headers,
         ),
       ]);
@@ -151,11 +150,21 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
   }
 
   Widget _buildMetricCard(String label, int value, Color color) {
+    final gradientColors = {
+      _accentColor: const [Color(0xFFB2F1DF), Color(0xFFE0F9F6)],
+      _successColor: const [Color(0xFFC6F6D5), Color(0xFFF0FDF4)],
+      _dangerColor: const [Color(0xFFFECACA), Color(0xFFFEF2F2)],
+    };
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          gradient: LinearGradient(
+            colors: gradientColors[color] ?? [Colors.white, Colors.white],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -180,8 +189,8 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
             Text(
               '$value',
               style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
                 color: Color(0xFF20323B),
               ),
             ),
@@ -205,6 +214,9 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
     final badgeLabel = _badgeLabel(item);
     final badgeColor = _badgeColor(item);
     final timeText = DateFormat('hh:mm a').format(item.screeningDate.toLocal());
+    final leftBorderColor = item.earLeft == 'refer' || item.earRight == 'refer'
+        ? _dangerColor
+        : _successColor;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -212,6 +224,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
+        border: Border(left: BorderSide(color: leftBorderColor, width: 4)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -229,10 +242,11 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                 Text(
                   _maskSystemId(item.babySystemId),
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
                     color: Color(0xFF20323B),
-                    letterSpacing: 0,
+                    letterSpacing: 0.5,
+                    fontFamily: 'monospace',
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -241,24 +255,24 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF6B7C85),
+                    color: Color(0xFF9CA3AF),
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.14),
+              color: badgeColor,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               badgeLabel,
-              style: TextStyle(
-                color: badgeColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -316,14 +330,21 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            _getMotivationalMessage(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0D6E63),
-              height: 1.4,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF18C7A5),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              _getMotivationalMessage(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                height: 1.4,
+              ),
             ),
           ),
           const SizedBox(height: 28),
@@ -338,19 +359,47 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
           const SizedBox(height: 14),
           if (_screenings.isEmpty)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Text(
-                t.noTodayScreenings,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7C85),
-                ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F8F5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 40,
+                      color: Color(0xFF18C7A5),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    t.noTodayScreenings,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7C85),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Beristirahat dan nikmati hari anda!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ],
               ),
             )
           else
@@ -368,7 +417,15 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: _tealColor,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0D6E63), Color(0xFF1A9B87)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         leading: IconButton(
           tooltip: t.back,
           icon: const Icon(Icons.arrow_back),

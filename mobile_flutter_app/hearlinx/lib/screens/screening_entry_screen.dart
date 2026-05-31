@@ -64,7 +64,7 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/babies/$systemId'),
+        Uri.parse('${ApiConfig.baseUrl}/babies/$systemId'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -231,7 +231,7 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
 
       final screening = _currentScreening();
       final response = await http.post(
-        Uri.parse('$baseUrl/screenings/'),
+        Uri.parse('${ApiConfig.baseUrl}/screenings/'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

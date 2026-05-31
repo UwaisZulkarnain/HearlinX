@@ -1,11 +1,11 @@
 {
-    "name": "hearlinx",
-    "short_name": "hearlinx",
+    "name": "DengarTrack",
+    "short_name": "DengarTrack",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Digital newborn hearing screening management platform.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
