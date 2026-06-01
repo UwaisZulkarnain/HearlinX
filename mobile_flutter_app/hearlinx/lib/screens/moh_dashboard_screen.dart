@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -43,16 +44,29 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
         throw Exception('Sesi telah tamat. Sila log masuk semula.');
       }
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/reports/national-summary'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/reports/national-summary'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(_parseErrorMessage(response.body));
       }
 
-      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      late Map<String, dynamic> payload;
+      try {
+        payload = jsonDecode(response.body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
       if (!mounted) {
         return;
       }
@@ -60,6 +74,14 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
       setState(() {
         _summary = _NationalSummary.fromJson(payload);
         _lastUpdatedTime = DateTime.now();
+        _isLoading = false;
+      });
+    } on TimeoutException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = 'Sambungan lambat. Sila cuba semula.';
         _isLoading = false;
       });
     } catch (e) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -31,6 +32,9 @@ class _CoordinatorDashboardScreenState
   _MonthlySummary _summary = const _MonthlySummary();
   List<_FollowUpItem> _followUps = const [];
   List<_HospitalScreeningItem> _screenings = const [];
+  _BenchmarkData _benchmark = const _BenchmarkData();
+  _CoverageData _coverage = const _CoverageData();
+  List<_WardBreakdownItem> _wards = const [];
 
   @override
   void initState() {
@@ -56,18 +60,39 @@ class _CoordinatorDashboardScreenState
       final displayName = await _authService.getDisplayName();
 
       final responses = await Future.wait([
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
-          headers: headers,
-        ),
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/followups/'),
-          headers: headers,
-        ),
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
-          headers: headers,
-        ),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(Uri.parse('${ApiConfig.baseUrl}/followups/'), headers: headers)
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/reports/benchmark'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/reports/coverage'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/reports/ward-breakdown'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
       ]);
 
       for (final response in responses) {
@@ -76,9 +101,79 @@ class _CoordinatorDashboardScreenState
         }
       }
 
-      final summaryJson = jsonDecode(responses[0].body) as Map<String, dynamic>;
-      final followUpJson = jsonDecode(responses[1].body) as List<dynamic>;
-      final screeningJson = jsonDecode(responses[2].body) as List<dynamic>;
+      late Map<String, dynamic> summaryJson;
+      late List<dynamic> followUpJson;
+      late List<dynamic> screeningJson;
+      late Map<String, dynamic> benchmarkJson;
+      late Map<String, dynamic> coverageJson;
+      late Map<String, dynamic> wardBreakdownJson;
+
+      try {
+        summaryJson = jsonDecode(responses[0].body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        followUpJson = jsonDecode(responses[1].body) as List<dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        screeningJson = jsonDecode(responses[2].body) as List<dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        benchmarkJson = jsonDecode(responses[3].body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        coverageJson = jsonDecode(responses[4].body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        wardBreakdownJson =
+            jsonDecode(responses[5].body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
 
       if (!mounted) {
         return;
@@ -96,6 +191,23 @@ class _CoordinatorDashboardScreenState
                   _HospitalScreeningItem.fromJson(item as Map<String, dynamic>),
             )
             .toList();
+        _benchmark = _BenchmarkData.fromJson(benchmarkJson);
+        _coverage = _CoverageData.fromJson(coverageJson);
+        final wardsList = wardBreakdownJson['wards'] as List<dynamic>? ?? [];
+        _wards = wardsList
+            .map(
+              (item) =>
+                  _WardBreakdownItem.fromJson(item as Map<String, dynamic>),
+            )
+            .toList();
+        _isLoading = false;
+      });
+    } on TimeoutException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = 'Sambungan lambat. Sila cuba semula.';
         _isLoading = false;
       });
     } catch (e) {
@@ -131,14 +243,16 @@ class _CoordinatorDashboardScreenState
         throw Exception('Sesi telah tamat. Sila log masuk semula.');
       }
 
-      final response = await _apiService.client.patch(
-        Uri.parse('${_apiService.baseEndpoint}/followups/$id'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(payload),
-      );
+      final response = await _apiService.client
+          .patch(
+            Uri.parse('${_apiService.baseEndpoint}/followups/$id'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (!mounted) {
         return;
@@ -181,10 +295,14 @@ class _CoordinatorDashboardScreenState
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_parseErrorMessage(response.body));
     }
-    final payload = jsonDecode(response.body) as List<dynamic>;
-    return payload
-        .map((item) => _FollowUpEvent.fromJson(item as Map<String, dynamic>))
-        .toList();
+    try {
+      final payload = jsonDecode(response.body) as List<dynamic>;
+      return payload
+          .map((item) => _FollowUpEvent.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on FormatException {
+      throw Exception('Ralat data dari pelayan.');
+    }
   }
 
   Widget _metricCard(String label, int value, Color color) {
@@ -452,6 +570,231 @@ class _CoordinatorDashboardScreenState
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          // Coverage Rate Section
+          _sectionCard(
+            title: 'Kadar Liputan Saringan',
+            child: Column(
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 120,
+                        width: 120,
+                        child: CircularProgressIndicator(
+                          value: _coverage.coverageRatePct / 100,
+                          strokeWidth: 8,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF14B8A6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${_coverage.coverageRatePct.toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF14B8A6),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${_coverage.totalBabiesScreened} / ${_coverage.totalBabiesRegistered} bayi disaring',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppStyles.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          // 1-3-6 KKM Benchmark Section
+          _sectionCard(
+            title: 'Penanda Aras 1-3-6 KKM',
+            child: Column(
+              children: [
+                // 1 Month Screened
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Disaring dalam 1 bulan',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          '${_benchmark.screenedBy1MonthPct.toStringAsFixed(1)}%',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _benchmark.screenedBy1MonthPct / 100,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _benchmark.screenedBy1MonthPct >= 90
+                              ? AppStyles.success
+                              : _benchmark.screenedBy1MonthPct >= 70
+                              ? AppStyles.warning
+                              : AppStyles.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 3 Months Diagnosed
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Diagnosis dalam 3 bulan',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          '${_benchmark.diagnosedBy3MonthsPct.toStringAsFixed(1)}%',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _benchmark.diagnosedBy3MonthsPct / 100,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _benchmark.diagnosedBy3MonthsPct >= 90
+                              ? AppStyles.success
+                              : _benchmark.diagnosedBy3MonthsPct >= 70
+                              ? AppStyles.warning
+                              : AppStyles.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Sasaran KKM: ≥90%',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF2563EB),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Ward Breakdown Section
+          _sectionCard(
+            title: 'Pecahan Mengikut Wad',
+            child: _wards.isEmpty
+                ? Text(
+                    'Tiada data wad',
+                    style: const TextStyle(color: AppStyles.textSecondary),
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(
+                        Colors.grey[100],
+                      ),
+                      columns: const [
+                        DataColumn(
+                          label: Text(
+                            'Wad',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Jumlah',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Rujukan',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            'Kadar %',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                      rows: _wards.map((ward) {
+                        final referRateColor = ward.referRatePct < 10
+                            ? AppStyles.success
+                            : ward.referRatePct <= 20
+                            ? AppStyles.warning
+                            : AppStyles.danger;
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Text(
+                                ward.ward ?? '-',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            DataCell(Text('${ward.totalScreenings}')),
+                            DataCell(Text('${ward.totalRefer}')),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: referRateColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${ward.referRatePct.toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    color: referRateColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
           ),
           const SizedBox(height: 18),
           _sectionCard(
@@ -868,19 +1211,24 @@ class _FollowUpItem {
   });
 
   factory _FollowUpItem.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDateSafe(dynamic value) {
+      if (value == null) return null;
+      try {
+        return DateTime.parse(value as String);
+      } catch (_) {
+        return null;
+      }
+    }
+
     return _FollowUpItem(
       id: json['id'] as String? ?? '',
       babySystemId: json['baby_system_id'] as String? ?? '',
-      dueDate: json['due_date'] == null
-          ? null
-          : DateTime.parse(json['due_date'] as String),
+      dueDate: parseDateSafe(json['due_date']),
       status: json['status'] as String? ?? '',
       urgency: json['urgency'] as String? ?? 'new',
       daysOverdue: json['days_overdue'] as int? ?? 0,
       notes: json['notes'] as String?,
-      appointmentDate: json['appointment_date'] == null
-          ? null
-          : DateTime.parse(json['appointment_date'] as String),
+      appointmentDate: parseDateSafe(json['appointment_date']),
       ltfuReason: json['ltfu_reason'] as String?,
       contactAttempts: json['contact_attempts'] as int? ?? 0,
     );
@@ -908,12 +1256,20 @@ class _FollowUpEvent {
   });
 
   factory _FollowUpEvent.fromJson(Map<String, dynamic> json) {
+    DateTime createdAtSafe() {
+      try {
+        return DateTime.parse(json['created_at'] as String);
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return _FollowUpEvent(
       action: json['action'] as String? ?? '',
       fromStatus: json['from_status'] as String?,
       toStatus: json['to_status'] as String?,
       notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: createdAtSafe(),
     );
   }
 
@@ -933,11 +1289,19 @@ class _HospitalScreeningItem {
   });
 
   factory _HospitalScreeningItem.fromJson(Map<String, dynamic> json) {
+    DateTime screeningDateSafe() {
+      try {
+        return DateTime.parse(json['screening_date'] as String);
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return _HospitalScreeningItem(
       babySystemId: json['baby_system_id'] as String? ?? '',
       earLeft: json['ear_left'] as String? ?? '',
       earRight: json['ear_right'] as String? ?? '',
-      screeningDate: DateTime.parse(json['screening_date'] as String),
+      screeningDate: screeningDateSafe(),
     );
   }
 
@@ -949,4 +1313,66 @@ class _HospitalScreeningItem {
   bool get isRefer => earLeft == 'refer' || earRight == 'refer';
 
   String get resultLabel => isRefer ? 'REFER' : 'PASS';
+}
+
+class _BenchmarkData {
+  const _BenchmarkData({
+    this.screenedBy1MonthPct = 0,
+    this.diagnosedBy3MonthsPct = 0,
+  });
+
+  factory _BenchmarkData.fromJson(Map<String, dynamic> json) {
+    return _BenchmarkData(
+      screenedBy1MonthPct:
+          (json['screened_by_1_month_pct'] as num?)?.toDouble() ?? 0,
+      diagnosedBy3MonthsPct:
+          (json['diagnosed_by_3_months_pct'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  final double screenedBy1MonthPct;
+  final double diagnosedBy3MonthsPct;
+}
+
+class _CoverageData {
+  const _CoverageData({
+    this.totalBabiesRegistered = 0,
+    this.totalBabiesScreened = 0,
+    this.coverageRatePct = 0,
+  });
+
+  factory _CoverageData.fromJson(Map<String, dynamic> json) {
+    return _CoverageData(
+      totalBabiesRegistered: json['total_babies_registered'] as int? ?? 0,
+      totalBabiesScreened: json['total_babies_screened'] as int? ?? 0,
+      coverageRatePct: (json['coverage_rate_pct'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  final int totalBabiesRegistered;
+  final int totalBabiesScreened;
+  final double coverageRatePct;
+}
+
+class _WardBreakdownItem {
+  const _WardBreakdownItem({
+    this.ward,
+    required this.totalScreenings,
+    required this.totalRefer,
+    required this.referRatePct,
+  });
+
+  factory _WardBreakdownItem.fromJson(Map<String, dynamic> json) {
+    return _WardBreakdownItem(
+      ward: json['ward'] as String?,
+      totalScreenings: json['total_screenings'] as int? ?? 0,
+      totalRefer: json['total_refer'] as int? ?? 0,
+      referRatePct: (json['refer_rate_pct'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  final String? ward;
+  final int totalScreenings;
+  final int totalRefer;
+  final double referRatePct;
 }

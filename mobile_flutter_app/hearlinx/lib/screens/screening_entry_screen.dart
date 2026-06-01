@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -63,10 +64,12 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
         return;
       }
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/babies/$systemId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final response = await http
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/babies/$systemId'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (!mounted) {
         return;
@@ -83,20 +86,40 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
       }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final babyData = jsonDecode(response.body) as Map<String, dynamic>;
-        setState(() {
-          _selectedBaby = Baby(
-            id: babyData['id'] as String,
-            systemId: babyData['system_id'] as String,
-            hospitalId: babyData['hospital_id'] as String,
-            ward: babyData['ward'] as String? ?? 'N/A',
-          );
-        });
+        try {
+          final babyData = jsonDecode(response.body) as Map<String, dynamic>;
+          setState(() {
+            _selectedBaby = Baby(
+              id: babyData['id'] as String? ?? '',
+              systemId: babyData['system_id'] as String? ?? '',
+              hospitalId: babyData['hospital_id'] as String? ?? '',
+              ward: babyData['ward'] as String? ?? 'N/A',
+            );
+          });
+        } on FormatException {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ralat data dari pelayan.'),
+                backgroundColor: _warningColor,
+              ),
+            );
+          }
+        }
       } else {
         final errorMessage = _parseErrorMessage(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ralat: $errorMessage'),
+            backgroundColor: _warningColor,
+          ),
+        );
+      }
+    } on TimeoutException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sambungan lambat. Sila cuba semula.'),
             backgroundColor: _warningColor,
           ),
         );

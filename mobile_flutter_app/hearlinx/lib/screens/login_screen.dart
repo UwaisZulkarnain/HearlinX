@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -138,9 +139,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/hospitals/'),
-      );
+      final response = await http
+          .get(Uri.parse('${ApiConfig.baseUrl}/hospitals/'))
+          .timeout(const Duration(seconds: 15));
 
       if (!mounted) {
         return;
@@ -161,6 +162,14 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _hospitals = hospitals;
         _selectedHospitalCode = hospitals.isEmpty ? null : hospitals.first.code;
+        _isFetchingHospitals = false;
+      });
+    } on TimeoutException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _hospitalError = 'Sambungan lambat. Sila cuba semula.';
         _isFetchingHospitals = false;
       });
     } catch (e) {
@@ -239,16 +248,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const SizedBox(height: 12),
                         Container(
-                          width: 72,
-                          height: 72,
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
-                            color: _accentColor.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: _accentColor.withValues(alpha: 0.15),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          child: const Icon(
-                            Icons.headphones_rounded,
-                            color: _accentColor,
-                            size: 36,
+                          child: Image.asset(
+                            'assests/dengartrack_logo.png',
+                            fit: BoxFit.contain,
                           ),
                         ),
                         const SizedBox(height: 16),

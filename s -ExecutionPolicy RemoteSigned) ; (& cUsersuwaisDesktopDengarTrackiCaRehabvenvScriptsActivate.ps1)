@@ -1,0 +1,49 @@
+warning: in the working copy of 'dengartrack-backend/main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'dengartrack-backend/routers/reports.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/android/app/src/main/AndroidManifest.xml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/ios/Runner/Info.plist', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/config/api_config.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/main.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/coordinator_dashboard_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/home_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/login_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/moh_dashboard_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/screening_entry_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/shift_summary_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/screens/unhs_dashboard_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/services/api_service.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/lib/services/auth_service.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/linux/runner/my_application.cc', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/macos/Runner/Configs/AppInfo.xcconfig', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/pubspec.lock', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/pubspec.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/web/index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/web/manifest.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_flutter_app/hearlinx/windows/runner/main.cpp', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web_react/src/app/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web_react/src/i18n/en.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'web_react/src/i18n/ms.json', LF will be replaced by CRLF the next time Git touches it
+ .gitignore                                         | Bin [31m458[m -> [32m598[m bytes
+ dengartrack-backend/main.py                        |   4 [32m+[m[31m-[m
+ dengartrack-backend/routers/reports.py             |   4 [32m+[m[31m-[m
+ .../android/app/src/main/AndroidManifest.xml       |   2 [32m+[m[31m-[m
+ mobile_flutter_app/hearlinx/ios/Runner/Info.plist  |   2 [32m+[m[31m-[m
+ .../hearlinx/lib/config/api_config.dart            | 146 [32m+++++[m[31m-[m
+ mobile_flutter_app/hearlinx/lib/main.dart          |  12 [32m+[m[31m-[m
+ .../lib/screens/coordinator_dashboard_screen.dart  | 182 [32m++++++[m[31m--[m
+ .../hearlinx/lib/screens/home_screen.dart          | 307 [32m+++++++++[m[31m----[m
+ .../hearlinx/lib/screens/login_screen.dart         | 504 [32m++++++++++++[m[31m---------[m
+ .../hearlinx/lib/screens/moh_dashboard_screen.dart | 177 [32m++++++[m[31m--[m
+ .../lib/screens/screening_entry_screen.dart        |   4 [32m+[m[31m-[m
+ .../hearlinx/lib/screens/shift_summary_screen.dart | 125 [32m+++[m[31m--[m
+ .../lib/screens/unhs_dashboard_screen.dart         | 203 [32m+++++++[m[31m--[m
+ .../hearlinx/lib/services/api_service.dart         | 196 [32m+++++++[m[31m-[m
+ .../hearlinx/lib/services/auth_service.dart        |  16 [32m+[m[31m-[m
+ mobile_flutter_app/hearlinx/pubspec.lock           |   8 [32m+[m
+ mobile_flutter_app/hearlinx/pubspec.yaml           |   1 [32m+[m
+ mobile_flutter_app/hearlinx/web/index.html         |   6 [32m+[m[31m-[m
+ mobile_flutter_app/hearlinx/web/manifest.json      |   6 [32m+[m[31m-[m
+ web_react/src/app/globals.css                      |   2 [32m+[m[31m-[m
+ web_react/src/i18n/en.json                         |   6 [32m+[m[31m-[m
+ web_react/src/i18n/ms.json                         |   6 [32m+[m[31m-[m
+ 23 files changed, 1405 insertions(+), 514 deletions(-)

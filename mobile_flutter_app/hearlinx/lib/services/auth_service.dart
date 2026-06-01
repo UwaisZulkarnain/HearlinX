@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -42,18 +43,18 @@ class AuthService {
       final decoded = utf8.decode(base64Url.decode(normalized));
       final payload = jsonDecode(decoded) as Map<String, dynamic>;
 
-      final fullName = payload['full_name'] as String?;
-      if (fullName != null && fullName.trim().isNotEmpty) {
+      final fullName = payload['full_name'] as String? ?? '';
+      if (fullName.trim().isNotEmpty) {
         return fullName.trim();
       }
 
-      final name = payload['name'] as String?;
-      if (name != null && name.trim().isNotEmpty) {
+      final name = payload['name'] as String? ?? '';
+      if (name.trim().isNotEmpty) {
         return name.trim();
       }
 
-      final staffId = payload['staff_id'] as String?;
-      if (staffId != null && staffId.trim().isNotEmpty) {
+      final staffId = payload['staff_id'] as String? ?? '';
+      if (staffId.trim().isNotEmpty) {
         return staffId.trim();
       }
     } catch (_) {
@@ -86,17 +87,23 @@ class AuthService {
       return null;
     }
 
-    final response = await _client.get(
-      Uri.parse('${ApiConfig.baseUrl}/auth/me'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/auth/me'),
+          headers: {'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       return null;
     }
 
-    final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    return User.fromJson(payload);
+    try {
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      return User.fromJson(payload);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<bool> login({
@@ -118,15 +125,19 @@ class AuthService {
       return false;
     }
 
-    final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    final token = payload['access_token'] as String?;
-    if (token == null || token.isEmpty) {
+    try {
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      final token = payload['access_token'] as String? ?? '';
+      if (token.isEmpty) {
+        return false;
+      }
+
+      await _storage.write(key: 'jwt_token', value: token);
+      await _storage.write(key: 'selected_hospital', value: hospitalCode);
+      await _storage.write(key: 'staff_id', value: staffId);
+      return true;
+    } on FormatException {
       return false;
     }
-
-    await _storage.write(key: 'jwt_token', value: token);
-    await _storage.write(key: 'selected_hospital', value: hospitalCode);
-    await _storage.write(key: 'staff_id', value: staffId);
-    return true;
   }
 }

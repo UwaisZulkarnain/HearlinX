@@ -215,3 +215,32 @@ class AuditLogEntry(BaseModel):
     table_name: Optional[str]
     actor_name: str
     created_at: datetime
+
+
+class BenchmarkReport(BaseModel):
+    """KKM 1-3-6 compliance metrics for a hospital."""
+    screened_by_1_month: int
+    diagnosed_by_3_months: int
+    total_eligible: int
+    screened_by_1_month_pct: float
+    diagnosed_by_3_months_pct: float
+
+
+class CoverageReport(BaseModel):
+    """Coverage rate metrics for a hospital."""
+    total_babies_registered: int
+    total_babies_screened: int
+    coverage_rate_pct: float
+
+
+class WardBreakdownItem(BaseModel):
+    """Per-ward statistics."""
+    ward: Optional[str]
+    total_screenings: int
+    total_refer: int
+    refer_rate_pct: float
+
+
+class WardBreakdownReport(BaseModel):
+    """List of per-ward statistics."""
+    wards: list[WardBreakdownItem]

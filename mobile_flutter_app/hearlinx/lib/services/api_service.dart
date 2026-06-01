@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -17,7 +18,9 @@ class ApiService {
   Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
     final stopwatch = Stopwatch()..start();
     try {
-      final response = await _client.get(url, headers: headers);
+      final response = await _client
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 15));
       stopwatch.stop();
 
       ApiConfig.updateLatency(stopwatch.elapsed);
@@ -51,12 +54,9 @@ class ApiService {
   }) async {
     final stopwatch = Stopwatch()..start();
     try {
-      final response = await _client.post(
-        url,
-        headers: headers,
-        body: body,
-        encoding: encoding,
-      );
+      final response = await _client
+          .post(url, headers: headers, body: body, encoding: encoding)
+          .timeout(const Duration(seconds: 15));
       stopwatch.stop();
 
       ApiConfig.updateLatency(stopwatch.elapsed);
@@ -90,12 +90,9 @@ class ApiService {
   }) async {
     final stopwatch = Stopwatch()..start();
     try {
-      final response = await _client.patch(
-        url,
-        headers: headers,
-        body: body,
-        encoding: encoding,
-      );
+      final response = await _client
+          .patch(url, headers: headers, body: body, encoding: encoding)
+          .timeout(const Duration(seconds: 15));
       stopwatch.stop();
 
       ApiConfig.updateLatency(stopwatch.elapsed);

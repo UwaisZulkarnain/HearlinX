@@ -8,8 +8,16 @@ from openpyxl import Workbook
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from auth.dependencies import coordinator_or_unhs, moh_only
-from auth.models import MonthlyReportSummary, NationalHospitalSummary, NationalSummaryOut
+from auth.dependencies import coordinator_or_unhs, moh_only, require_role
+from auth.models import (
+    MonthlyReportSummary,
+    NationalHospitalSummary,
+    NationalSummaryOut,
+    BenchmarkReport,
+    CoverageReport,
+    WardBreakdownReport,
+    WardBreakdownItem,
+)
 from db.database import get_db
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -32,9 +40,9 @@ def get_monthly_summary(db: Session, hospital_id: str, year: int, month: int):
                 SELECT
                     hospital_id,
                     COUNT(*) AS total_screenings,
-                    COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                    COALESCE(SUM(CASE WHEN ear_left = 'pass' AND ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                     COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                    COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                    COALESCE(SUM(CASE WHEN (ear_left = 'refer' OR ear_right = 'refer') THEN 0 WHEN (ear_left = 'not_tested' OR ear_right = 'not_tested') THEN 1 ELSE 0 END), 0) AS total_not_tested
                 FROM screenings
                 WHERE EXTRACT(YEAR FROM screening_date) = :year
                   AND EXTRACT(MONTH FROM screening_date) = :month
@@ -68,9 +76,9 @@ def get_all_hospitals_monthly_summary(db: Session, year: int, month: int):
             FROM (
                 SELECT
                     COUNT(*) AS total_screenings,
-                    COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                    COALESCE(SUM(CASE WHEN ear_left = 'pass' AND ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                     COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                    COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                    COALESCE(SUM(CASE WHEN (ear_left = 'refer' OR ear_right = 'refer') THEN 0 WHEN (ear_left = 'not_tested' OR ear_right = 'not_tested') THEN 1 ELSE 0 END), 0) AS total_not_tested
                 FROM screenings
                 WHERE EXTRACT(YEAR FROM screening_date) = :year
                   AND EXTRACT(MONTH FROM screening_date) = :month
@@ -155,9 +163,9 @@ def export_report(
                     SELECT
                         hospital_id,
                         COUNT(*) AS total_screenings,
-                        COALESCE(SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
+                        COALESCE(SUM(CASE WHEN ear_left = 'pass' AND ear_right = 'pass' THEN 1 ELSE 0 END), 0) AS total_pass,
                         COALESCE(SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END), 0) AS total_refer,
-                        COALESCE(SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END), 0) AS total_not_tested
+                        COALESCE(SUM(CASE WHEN (ear_left = 'refer' OR ear_right = 'refer') THEN 0 WHEN (ear_left = 'not_tested' OR ear_right = 'not_tested') THEN 1 ELSE 0 END), 0) AS total_not_tested
                     FROM screenings
                     WHERE EXTRACT(YEAR FROM screening_date) = :year
                       AND EXTRACT(MONTH FROM screening_date) = :month
@@ -341,3 +349,164 @@ def national_summary(
         total_ltfu=sum(item.total_ltfu for item in hospitals),
         hospitals=hospitals,
     )
+
+
+@router.get("/benchmark", response_model=BenchmarkReport, tags=["reports"])
+def benchmark_report(
+    current_user: dict = Depends(coordinator_or_unhs),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns 1-3-6 KKM compliance metrics for the coordinator's hospital:
+    - screened_by_1_month: babies screened within 30 days of date_of_birth
+    - diagnosed_by_3_months: follow_ups with appointment_date within 90 days of date_of_birth
+    - total_eligible: total babies registered in hospital
+    - Scoped by coordinator's hospital_id from JWT
+    """
+    hospital_id = current_user.get("hospital_id")
+
+    result = db.execute(
+        text(
+            """
+            SELECT
+                COALESCE(SUM(CASE 
+                    WHEN AGE(s.screening_date::date, b.date_of_birth) <= INTERVAL '30 days'
+                    THEN 1 ELSE 0 
+                END), 0) AS screened_by_1_month,
+                COALESCE(SUM(CASE 
+                    WHEN f.appointment_date IS NOT NULL 
+                    AND AGE(f.appointment_date::date, b.date_of_birth) <= INTERVAL '90 days'
+                    THEN 1 ELSE 0 
+                END), 0) AS diagnosed_by_3_months
+            FROM babies b
+            LEFT JOIN screenings s ON s.baby_id = b.id
+            LEFT JOIN follow_ups f ON f.baby_id = b.id
+            WHERE b.hospital_id = :hospital_id
+            """
+        ),
+        {"hospital_id": hospital_id},
+    ).fetchone()
+
+    total_eligible = db.execute(
+        text("SELECT COUNT(*) AS total FROM babies WHERE hospital_id = :hospital_id"),
+        {"hospital_id": hospital_id},
+    ).scalar()
+
+    screened_by_1_month = result.screened_by_1_month or 0
+    diagnosed_by_3_months = result.diagnosed_by_3_months or 0
+    total_eligible = total_eligible or 0
+
+    screened_by_1_month_pct = (
+        (screened_by_1_month / total_eligible * 100) if total_eligible > 0 else 0
+    )
+    diagnosed_by_3_months_pct = (
+        (diagnosed_by_3_months / total_eligible * 100) if total_eligible > 0 else 0
+    )
+
+    return BenchmarkReport(
+        screened_by_1_month=screened_by_1_month,
+        diagnosed_by_3_months=diagnosed_by_3_months,
+        total_eligible=total_eligible,
+        screened_by_1_month_pct=round(screened_by_1_month_pct, 2),
+        diagnosed_by_3_months_pct=round(diagnosed_by_3_months_pct, 2),
+    )
+
+
+@router.get("/coverage", response_model=CoverageReport, tags=["reports"])
+def coverage_report(
+    current_user: dict = Depends(require_role("coordinator", "unhs_coordinator", "moh")),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns coverage rate for coordinator's hospital:
+    - total_babies_registered: count of babies in hospital
+    - total_babies_screened: count of distinct babies with at least one screening
+    - coverage_rate_pct: (screened / registered) * 100
+    Scoped by hospital_id from JWT.
+    Accessible by coordinator, unhs_coordinator, moh roles.
+    """
+    hospital_id = current_user.get("hospital_id")
+
+    total_registered = db.execute(
+        text("SELECT COUNT(*) AS total FROM babies WHERE hospital_id = :hospital_id"),
+        {"hospital_id": hospital_id},
+    ).scalar()
+
+    total_screened = db.execute(
+        text(
+            """
+            SELECT COUNT(DISTINCT baby_id) AS total 
+            FROM screenings 
+            WHERE hospital_id = :hospital_id
+            """
+        ),
+        {"hospital_id": hospital_id},
+    ).scalar()
+
+    total_registered = total_registered or 0
+    total_screened = total_screened or 0
+
+    coverage_rate_pct = (
+        (total_screened / total_registered * 100) if total_registered > 0 else 0
+    )
+
+    return CoverageReport(
+        total_babies_registered=total_registered,
+        total_babies_screened=total_screened,
+        coverage_rate_pct=round(coverage_rate_pct, 2),
+    )
+
+
+@router.get("/ward-breakdown", response_model=WardBreakdownReport, tags=["reports"])
+def ward_breakdown_report(
+    current_user: dict = Depends(coordinator_or_unhs),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns per-ward stats for coordinator's hospital:
+    - ward: ward name
+    - total_screenings: count of screenings in that ward
+    - total_refer: screenings where ear_left='refer' OR ear_right='refer'
+    - refer_rate_pct: (refer / total) * 100
+    Scoped by hospital_id from JWT.
+    """
+    hospital_id = current_user.get("hospital_id")
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                b.ward,
+                COUNT(*) AS total_screenings,
+                COALESCE(SUM(CASE 
+                    WHEN s.ear_left = 'refer' OR s.ear_right = 'refer' 
+                    THEN 1 ELSE 0 
+                END), 0) AS total_refer
+            FROM screenings s
+            JOIN babies b ON b.id = s.baby_id
+            WHERE b.hospital_id = :hospital_id
+            GROUP BY b.ward
+            ORDER BY b.ward ASC NULLS LAST
+            """
+        ),
+        {"hospital_id": hospital_id},
+    ).fetchall()
+
+    wards = []
+    for row in rows:
+        total_screenings = row.total_screenings or 0
+        total_refer = row.total_refer or 0
+        refer_rate_pct = (
+            (total_refer / total_screenings * 100) if total_screenings > 0 else 0
+        )
+
+        wards.append(
+            WardBreakdownItem(
+                ward=row.ward,
+                total_screenings=total_screenings,
+                total_refer=total_refer,
+                refer_rate_pct=round(refer_rate_pct, 2),
+            )
+        )
+
+    return WardBreakdownReport(wards=wards)

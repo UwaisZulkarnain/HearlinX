@@ -293,17 +293,30 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'DengarTrack',
-            maxLines: 1,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
+        title: Row(
+          children: [
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: Image.asset(
+                'assests/dengartrack_logo.png',
+                fit: BoxFit.contain,
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'DengarTrack',
+                maxLines: 1,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(

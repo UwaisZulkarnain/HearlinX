@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -51,14 +52,18 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
 
       final headers = {'Authorization': 'Bearer $token'};
       final responses = await Future.wait([
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/screenings/shift-summary/today'),
-          headers: headers,
-        ),
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
-          headers: headers,
-        ),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/screenings/shift-summary/today'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
       ]);
 
       final summaryResponse = responses[0];
@@ -73,9 +78,30 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
         throw Exception(_parseErrorMessage(listResponse.body));
       }
 
-      final summaryJson =
-          jsonDecode(summaryResponse.body) as Map<String, dynamic>;
-      final listJson = jsonDecode(listResponse.body) as List<dynamic>;
+      late Map<String, dynamic> summaryJson;
+      late List<dynamic> listJson;
+
+      try {
+        summaryJson = jsonDecode(summaryResponse.body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        listJson = jsonDecode(listResponse.body) as List<dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
 
       if (!mounted) {
         return;
@@ -89,6 +115,15 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                   _ScreeningListItem.fromJson(item as Map<String, dynamic>),
             )
             .toList();
+        _isLoading = false;
+      });
+    } on TimeoutException {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = 'Sambungan lambat. Sila cuba semula.';
         _isLoading = false;
       });
     } catch (e) {
@@ -490,11 +525,19 @@ class _ScreeningListItem {
   });
 
   factory _ScreeningListItem.fromJson(Map<String, dynamic> json) {
+    DateTime screeningDateSafe() {
+      try {
+        return DateTime.parse(json['screening_date'] as String);
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return _ScreeningListItem(
       babySystemId: json['baby_system_id'] as String? ?? '',
       earLeft: json['ear_left'] as String? ?? '',
       earRight: json['ear_right'] as String? ?? '',
-      screeningDate: DateTime.parse(json['screening_date'] as String),
+      screeningDate: screeningDateSafe(),
     );
   }
 

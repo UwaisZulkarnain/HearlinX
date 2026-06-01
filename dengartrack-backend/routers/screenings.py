@@ -285,9 +285,9 @@ def get_shift_summary(
     result = db.execute(text(f"""
         SELECT
             COUNT(*) as total_screened,
-            SUM(CASE WHEN ear_left = 'pass' OR ear_right = 'pass' THEN 1 ELSE 0 END) as total_pass,
+            SUM(CASE WHEN ear_left = 'pass' AND ear_right = 'pass' THEN 1 ELSE 0 END) as total_pass,
             SUM(CASE WHEN ear_left = 'refer' OR ear_right = 'refer' THEN 1 ELSE 0 END) as total_refer,
-            SUM(CASE WHEN ear_left = 'not_tested' AND ear_right = 'not_tested' THEN 1 ELSE 0 END) as total_not_tested
+            SUM(CASE WHEN (ear_left = 'refer' OR ear_right = 'refer') THEN 0 WHEN (ear_left = 'not_tested' OR ear_right = 'not_tested') THEN 1 ELSE 0 END) as total_not_tested
         FROM screenings
         WHERE {where_clause}
         AND DATE(screening_date) = :today

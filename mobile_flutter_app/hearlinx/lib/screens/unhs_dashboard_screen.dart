@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -45,14 +46,18 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
 
       final headers = {'Authorization': 'Bearer $token'};
       final responses = await Future.wait([
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
-          headers: headers,
-        ),
-        http.get(
-          Uri.parse('${ApiConfig.baseUrl}/audit-logs/recent'),
-          headers: headers,
-        ),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
+        http
+            .get(
+              Uri.parse('${ApiConfig.baseUrl}/audit-logs/recent'),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: 15)),
       ]);
 
       for (final response in responses) {
@@ -61,8 +66,30 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
         }
       }
 
-      final summaryJson = jsonDecode(responses[0].body) as Map<String, dynamic>;
-      final auditJson = jsonDecode(responses[1].body) as List<dynamic>;
+      late Map<String, dynamic> summaryJson;
+      late List<dynamic> auditJson;
+
+      try {
+        summaryJson = jsonDecode(responses[0].body) as Map<String, dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
+
+      try {
+        auditJson = jsonDecode(responses[1].body) as List<dynamic>;
+      } on FormatException {
+        if (!mounted) return;
+        setState(() => _errorMessage = 'Ralat data dari pelayan.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ralat data dari pelayan.')),
+        );
+        return;
+      }
 
       if (!mounted) {
         return;
@@ -73,6 +100,14 @@ class _UnhsDashboardScreenState extends State<UnhsDashboardScreen> {
         _auditItems = auditJson
             .map((item) => _AuditItem.fromJson(item as Map<String, dynamic>))
             .toList();
+        _isLoading = false;
+      });
+    } on TimeoutException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = 'Sambungan lambat. Sila cuba semula.';
         _isLoading = false;
       });
     } catch (e) {
@@ -384,11 +419,19 @@ class _AuditItem {
   });
 
   factory _AuditItem.fromJson(Map<String, dynamic> json) {
+    DateTime createdAtSafe() {
+      try {
+        return DateTime.parse(json['created_at'] as String);
+      } catch (_) {
+        return DateTime.now();
+      }
+    }
+
     return _AuditItem(
       actorName: json['actor_name'] as String? ?? '',
       action: json['action'] as String? ?? '',
       tableName: json['table_name'] as String? ?? '',
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: createdAtSafe(),
     );
   }
 
