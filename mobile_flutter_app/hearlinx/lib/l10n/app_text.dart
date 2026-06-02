@@ -20,6 +20,16 @@ class AppText {
   String get forgotPin => isMs
       ? 'Lupa PIN?\nHubungi Penyelaras'
       : 'Forgot PIN?\nContact Coordinator';
+  String get contactCoordinator =>
+      isMs ? 'Hubungi Penyelaras' : 'Contact Coordinator';
+  String get forgotPinContactName => 'Siti Aminah Kamaludin (Mak Uda)';
+  String get forgotPinContactPhone =>
+      isMs ? 'Telefon: +6012-345-6789' : 'Phone: +6012-345-6789';
+  String get forgotPinContactEmail => isMs
+      ? 'Emel: p153232@siswa.ukm.edu.my'
+      : 'Email: p153232@siswa.ukm.edu.my';
+  String get forgotPinContactOffice =>
+      'Pejabat: iCaRehab, Fakulti Sains Kesihatan, UKM';
   String get appSubtitle => isMs
       ? 'Sistem Pengurusan Saringan Pendengaran Bayi'
       : 'Newborn Hearing Screening Management System';
@@ -104,8 +114,10 @@ class AppText {
       ? 'Tidak dapat memuatkan profil pengguna.'
       : 'Unable to load user profile.';
   String get screener => isMs ? 'Penyaring' : 'Screener';
-  String get coordinator => isMs ? 'Penyelaras' : 'Coordinator';
-  String get unhsCoordinator => isMs ? 'Penyelaras UNHS' : 'UNHS Coordinator';
+  String get coordinator =>
+      isMs ? 'Audiologis Hospital' : 'Hospital Audiologist';
+  String get unhsCoordinator =>
+      isMs ? 'Penyelaras UNHS Nasional' : 'National UNHS Coordinator';
   String get user => isMs ? 'Pengguna' : 'User';
   String get totalScreenings => isMs ? 'Total Saringan' : 'Total Screenings';
   String get notTested => isMs ? 'Tidak diuji' : 'Not tested';

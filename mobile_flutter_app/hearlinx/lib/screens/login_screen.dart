@@ -86,11 +86,10 @@ class _LoginScreenState extends State<LoginScreen> {
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       prefixIcon: isDropdown
-          ? const Icon(
-              Icons.local_hospital_rounded,
-              color: _accentColor,
-              size: 22,
-            )
+          ? const Icon(Icons.local_hospital, color: Color(0xFF14B8A6), size: 32)
+          : null,
+      prefixIconConstraints: isDropdown
+          ? const BoxConstraints(minWidth: 56, minHeight: 56)
           : null,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
@@ -219,307 +218,382 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.of(context).pushReplacementNamed('/home');
   }
 
+  void _showForgotPinDialog() {
+    final t = context.read<LanguageProvider>().text;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.contactCoordinator),
+        content: Text(
+          [
+            t.forgotPinContactName,
+            t.forgotPinContactPhone,
+            t.forgotPinContactEmail,
+            t.forgotPinContactOffice,
+          ].join('\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(t.close),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.watch<LanguageProvider>().text;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: Stack(
-        children: [
-          if (_isLoading)
-            const LinearProgressIndicator(
-              minHeight: 2,
-              backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
-            ),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 20,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 390),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: _accentColor.withValues(alpha: 0.15),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Image.asset(
-                            'assests/dengartrack_logo.png',
-                            fit: BoxFit.contain,
-                          ),
+      body: LayoutBuilder(
+        builder: (context, viewport) {
+          final isCompact = viewport.maxHeight < 760;
+          final logoSize = isCompact ? 62.0 : 80.0;
+          final gapTiny = isCompact ? 4.0 : 8.0;
+          final gapSmall = isCompact ? 8.0 : 12.0;
+          final gapMedium = isCompact ? 14.0 : 26.0;
+          final gapLarge = isCompact ? 18.0 : 28.0;
+          final formWidth = (viewport.maxWidth - 56)
+              .clamp(0.0, 390.0)
+              .toDouble();
+
+          return SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: viewport.maxHeight,
+                maxHeight: viewport.maxHeight,
+              ),
+              child: Stack(
+                children: [
+                  if (_isLoading)
+                    const LinearProgressIndicator(
+                      minHeight: 2,
+                      backgroundColor: Colors.transparent,
+                      valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
+                    ),
+                  SafeArea(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: isCompact ? 12 : 20,
                         ),
-                        const SizedBox(height: 16),
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Colors.white, Color(0xFF9AF3E2)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ).createShader(bounds),
-                          child: const FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'DengarTrack',
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                fontWeight: FontWeight.w900,
-                                height: 1,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          t.appSubtitle,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: _accentColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        Text(
-                          t.welcome,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          t.subtitle,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        Text(
-                          t.hospital,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_isFetchingHospitals)
-                          const SizedBox(
-                            height: 56,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  _accentColor,
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (_hospitalError != null)
-                          Text(
-                            _hospitalError!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          )
-                        else
-                          DropdownButtonFormField<String>(
-                            initialValue: _selectedHospitalCode,
-                            decoration: _inputDecoration(
-                              t.selectHospital,
-                              isDropdown: true,
-                            ),
-                            dropdownColor: Colors.white,
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                            items: _hospitals
-                                .map(
-                                  (hospital) => DropdownMenuItem<String>(
-                                    value: hospital.code,
-                                    child: Text(
-                                      hospital.label,
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Form(
+                            key: _formKey,
+                            child: SizedBox(
+                              width: formWidth,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: logoSize,
+                                    height: logoSize,
+                                    decoration: BoxDecoration(
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _accentColor.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Image.asset(
+                                      'assests/dengartrack_logo.png',
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
-                                )
-                                .toList(),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return t.selectHospital;
-                              }
-                              return null;
-                            },
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              setState(() {
-                                _selectedHospitalCode = value;
-                              });
-                            },
-                          ),
-                        const SizedBox(height: 26),
-                        Text(
-                          t.staffId,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _staffIdController,
-                          decoration: _inputDecoration(t.enterStaffId),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return t.enterStaffId;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 26),
-                        Text(
-                          t.pin,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _pinController,
-                          obscureText: true,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          style: const TextStyle(
-                            fontSize: 18,
-                            letterSpacing: 3,
-                          ),
-                          decoration: _inputDecoration('••••••'),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return t.enterPin;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 26),
-                        Row(
-                          children: [
-                            _languageToggle('BM', 'ms'),
-                            const SizedBox(width: 18),
-                            _languageToggle('EN', 'en'),
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 60,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [_accentColor, const Color(0xFF0D9E8A)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: ElevatedButton(
-                              onPressed:
-                                  _isLoading ||
-                                      _isFetchingHospitals ||
-                                      _selectedHospitalCode == null
-                                  ? null
-                                  : _submitLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.transparent,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.4,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
-                                      ),
-                                    )
-                                  : Text(
-                                      t.signIn,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w800,
+                                  SizedBox(height: isCompact ? 8 : 16),
+                                  ShaderMask(
+                                    shaderCallback: (bounds) =>
+                                        const LinearGradient(
+                                          colors: [
+                                            Colors.white,
+                                            Color(0xFF9AF3E2),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ).createShader(bounds),
+                                    child: const FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'DengarTrack',
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 40,
+                                          fontWeight: FontWeight.w900,
+                                          height: 1,
+                                        ),
                                       ),
                                     ),
+                                  ),
+                                  SizedBox(height: gapTiny),
+                                  Text(
+                                    t.appSubtitle,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: _accentColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  SizedBox(height: gapLarge),
+                                  Text(
+                                    t.welcome,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(height: gapTiny),
+                                  Text(
+                                    t.subtitle,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: gapLarge),
+                                  Text(
+                                    t.hospital,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(height: gapSmall),
+                                  if (_isFetchingHospitals)
+                                    const SizedBox(
+                                      height: 56,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                _accentColor,
+                                              ),
+                                        ),
+                                      ),
+                                    )
+                                  else if (_hospitalError != null)
+                                    Text(
+                                      _hospitalError!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )
+                                  else
+                                    DropdownButtonFormField<String>(
+                                      isExpanded: true,
+                                      initialValue: _selectedHospitalCode,
+                                      decoration: _inputDecoration(
+                                        t.selectHospital,
+                                        isDropdown: true,
+                                      ),
+                                      dropdownColor: Colors.white,
+                                      icon: const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                      ),
+                                      items: _hospitals
+                                          .map(
+                                            (hospital) =>
+                                                DropdownMenuItem<String>(
+                                                  value: hospital.code,
+                                                  child: ConstrainedBox(
+                                                    constraints:
+                                                        const BoxConstraints(
+                                                          maxWidth: 260,
+                                                        ),
+                                                    child: Text(
+                                                      hospital.label,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 1,
+                                                    ),
+                                                  ),
+                                                ),
+                                          )
+                                          .toList(),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return t.selectHospital;
+                                        }
+                                        return null;
+                                      },
+                                      onChanged: (value) {
+                                        if (value == null) {
+                                          return;
+                                        }
+                                        setState(() {
+                                          _selectedHospitalCode = value;
+                                        });
+                                      },
+                                    ),
+                                  SizedBox(height: gapMedium),
+                                  Text(
+                                    t.staffId,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(height: gapSmall),
+                                  TextFormField(
+                                    controller: _staffIdController,
+                                    decoration: _inputDecoration(
+                                      t.enterStaffId,
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return t.enterStaffId;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: gapMedium),
+                                  Text(
+                                    t.pin,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  SizedBox(height: gapSmall),
+                                  TextFormField(
+                                    controller: _pinController,
+                                    obscureText: true,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      letterSpacing: 3,
+                                    ),
+                                    decoration: _inputDecoration('••••••'),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return t.enterPin;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: gapMedium),
+                                  Row(
+                                    children: [
+                                      _languageToggle('BM', 'ms'),
+                                      const SizedBox(width: 18),
+                                      _languageToggle('EN', 'en'),
+                                    ],
+                                  ),
+                                  SizedBox(height: gapLarge),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 60,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            _accentColor,
+                                            const Color(0xFF0D9E8A),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed:
+                                            _isLoading ||
+                                                _isFetchingHospitals ||
+                                                _selectedHospitalCode == null
+                                            ? null
+                                            : _submitLogin,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          foregroundColor: Colors.white,
+                                          disabledBackgroundColor:
+                                              Colors.transparent,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                        ),
+                                        child: _isLoading
+                                            ? const SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2.4,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
+                                                ),
+                                              )
+                                            : Text(
+                                                t.signIn,
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: isCompact ? 14 : 22),
+                                  GestureDetector(
+                                    onTap: _showForgotPinDialog,
+                                    child: Text(
+                                      t.forgotPin,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: _accentColor,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.5,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: _accentColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 22),
-                        GestureDetector(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(t.forgotPin)),
-                            );
-                          },
-                          child: Text(
-                            t.forgotPin,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: _accentColor,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              height: 1.5,
-                              decoration: TextDecoration.underline,
-                              decorationColor: _accentColor,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

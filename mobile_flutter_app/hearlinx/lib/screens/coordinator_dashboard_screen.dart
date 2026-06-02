@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -59,7 +60,7 @@ class _CoordinatorDashboardScreenState
       // Get coordinator name
       final displayName = await _authService.getDisplayName();
 
-      final responses = await Future.wait([
+      final responses = await Future.wait<http.Response?>([
         http
             .get(
               Uri.parse('${ApiConfig.baseUrl}/reports/monthly'),
@@ -95,85 +96,51 @@ class _CoordinatorDashboardScreenState
             .timeout(const Duration(seconds: 15)),
       ]);
 
-      for (final response in responses) {
+      final monthlyResponse = responses[0];
+      if (monthlyResponse == null) {
+        _finishLoadingWithError('Tiada respons untuk laporan bulanan.');
+        return;
+      }
+      final followUpsResponse = responses[1];
+      if (followUpsResponse == null) {
+        _finishLoadingWithError('Tiada respons untuk senarai susulan.');
+        return;
+      }
+      final screeningsResponse = responses[2];
+      if (screeningsResponse == null) {
+        _finishLoadingWithError('Tiada respons untuk saringan hari ini.');
+        return;
+      }
+      final benchmarkResponse = responses[3];
+      if (benchmarkResponse == null) {
+        _finishLoadingWithError('Tiada respons untuk benchmark.');
+        return;
+      }
+      final coverageResponse = responses[4];
+      if (coverageResponse == null) {
+        _finishLoadingWithError('Tiada respons untuk kadar liputan.');
+        return;
+      }
+      final wardBreakdownResponse = responses[5];
+      if (wardBreakdownResponse == null) {
+        _finishLoadingWithError('Tiada respons untuk pecahan wad.');
+        return;
+      }
+
+      for (final response in responses.whereType<http.Response>()) {
         if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw Exception(_parseErrorMessage(response.body));
+          throw Exception(
+            'HTTP ${response.statusCode}: ${_parseErrorMessage(response.body)}',
+          );
         }
       }
 
-      late Map<String, dynamic> summaryJson;
-      late List<dynamic> followUpJson;
-      late List<dynamic> screeningJson;
-      late Map<String, dynamic> benchmarkJson;
-      late Map<String, dynamic> coverageJson;
-      late Map<String, dynamic> wardBreakdownJson;
-
-      try {
-        summaryJson = jsonDecode(responses[0].body) as Map<String, dynamic>;
-      } on FormatException {
-        if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
-        return;
-      }
-
-      try {
-        followUpJson = jsonDecode(responses[1].body) as List<dynamic>;
-      } on FormatException {
-        if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
-        return;
-      }
-
-      try {
-        screeningJson = jsonDecode(responses[2].body) as List<dynamic>;
-      } on FormatException {
-        if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
-        return;
-      }
-
-      try {
-        benchmarkJson = jsonDecode(responses[3].body) as Map<String, dynamic>;
-      } on FormatException {
-        if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
-        return;
-      }
-
-      try {
-        coverageJson = jsonDecode(responses[4].body) as Map<String, dynamic>;
-      } on FormatException {
-        if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
-        return;
-      }
-
-      try {
-        wardBreakdownJson =
-            jsonDecode(responses[5].body) as Map<String, dynamic>;
-      } on FormatException {
-        if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
-        return;
-      }
+      final summaryJson = _decodeMapResponse(monthlyResponse);
+      final followUpJson = _decodeListResponse(followUpsResponse);
+      final screeningJson = _decodeListResponse(screeningsResponse);
+      final benchmarkJson = _decodeMapResponse(benchmarkResponse);
+      final coverageJson = _decodeMapResponse(coverageResponse);
+      final wardBreakdownJson = _decodeMapResponse(wardBreakdownResponse);
 
       if (!mounted) {
         return;
@@ -202,23 +169,41 @@ class _CoordinatorDashboardScreenState
             .toList();
         _isLoading = false;
       });
+    } on SocketException {
+      _finishLoadingWithError('Sambungan internet tiada. Sila cuba semula.');
     } on TimeoutException {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _errorMessage = 'Sambungan lambat. Sila cuba semula.';
-        _isLoading = false;
-      });
+      _finishLoadingWithError('Sambungan lambat. Sila cuba semula.');
+    } on FormatException {
+      _finishLoadingWithError('Ralat data dari pelayan.');
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
-      });
+      _finishLoadingWithError(e.toString());
     }
+  }
+
+  Map<String, dynamic> _decodeMapResponse(http.Response response) {
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    throw const FormatException('Expected JSON object.');
+  }
+
+  List<dynamic> _decodeListResponse(http.Response response) {
+    final decoded = jsonDecode(response.body);
+    if (decoded is List<dynamic>) {
+      return decoded;
+    }
+    throw const FormatException('Expected JSON list.');
+  }
+
+  void _finishLoadingWithError(String message) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _errorMessage = message;
+      _isLoading = false;
+    });
   }
 
   String _parseErrorMessage(String body) {
@@ -229,6 +214,9 @@ class _CoordinatorDashboardScreenState
         return detail;
       }
     } catch (_) {}
+    if (body.trim().isNotEmpty) {
+      return body.trim();
+    }
     return 'Ralat tidak diketahui';
   }
 
@@ -413,12 +401,20 @@ class _CoordinatorDashboardScreenState
 
   Widget _buildBody() {
     final t = context.watch<LanguageProvider>().text;
+    final hasNoDashboardData =
+        _summary.totalScreenings == 0 &&
+        _summary.totalPass == 0 &&
+        _summary.totalRefer == 0 &&
+        _summary.totalLtfu == 0 &&
+        _followUps.isEmpty &&
+        _screenings.isEmpty &&
+        _wards.isEmpty;
 
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage != null) {
+    if (_errorMessage != null && _errorMessage!.isNotEmpty) {
       return RefreshIndicator(
         onRefresh: _loadData,
         color: const Color(0xFF18C7A5),
@@ -429,10 +425,27 @@ class _CoordinatorDashboardScreenState
           padding: const EdgeInsets.all(24),
           children: [
             const SizedBox(height: 120),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppStyles.textSecondary),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: AppStyles.surfaceCard(),
+              child: Column(
+                children: [
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppStyles.textSecondary),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: _loadData,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF18C7A5)),
+                      foregroundColor: const Color(0xFF18C7A5),
+                    ),
+                    child: Text(t.retry),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -464,6 +477,18 @@ class _CoordinatorDashboardScreenState
             "${t.monthlySummary} ${DateFormat('MMMM yyyy').format(DateTime(_summary.year, _summary.month))}",
             style: const TextStyle(color: AppStyles.textSecondary),
           ),
+          if (hasNoDashboardData) ...[
+            const SizedBox(height: 18),
+            _sectionCard(
+              title: t.dashboard,
+              child: Text(
+                t.isMs
+                    ? 'Tiada data dashboard tersedia selepas dimuatkan. Cuba semula atau semak sambungan pelayan.'
+                    : 'No dashboard data is available after loading. Try again or check the server connection.',
+                style: const TextStyle(color: AppStyles.textSecondary),
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           Row(
             children: [
@@ -487,15 +512,19 @@ class _CoordinatorDashboardScreenState
             ],
           ),
           const SizedBox(height: 18),
-          // Additional Info Row
+          // Additional Info Row - FIXED OVERFLOW
           Row(
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: AppStyles.surfaceCard(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -505,17 +534,21 @@ class _CoordinatorDashboardScreenState
                             color: Color(0xFF18C7A5),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            t.lastScreening,
-                            style: const TextStyle(
-                              color: AppStyles.textSecondary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11,
+                          const Expanded(
+                            child: Text(
+                              'Saringan Terakhir',
+                              style: TextStyle(
+                                color: AppStyles.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         _getLastScreeningTime(),
                         style: const TextStyle(
@@ -523,6 +556,8 @@ class _CoordinatorDashboardScreenState
                           fontWeight: FontWeight.w700,
                           color: AppStyles.textPrimary,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
                       ),
                     ],
                   ),
@@ -531,10 +566,14 @@ class _CoordinatorDashboardScreenState
               const SizedBox(width: 12),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: AppStyles.surfaceCard(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: [
@@ -544,19 +583,21 @@ class _CoordinatorDashboardScreenState
                             color: Color(0xFF18C7A5),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            t.activeScreeners,
-                            style: const TextStyle(
-                              color: AppStyles.textSecondary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11,
+                          const Expanded(
+                            child: Text(
+                              'Penyaring Aktif',
+                              style: TextStyle(
+                                color: AppStyles.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         '${_screenings.length}',
                         style: const TextStyle(

@@ -49,12 +49,12 @@ class AppShell extends StatelessWidget {
             : null,
         title: Text(
           title,
-          maxLines: 1,
-          overflow: TextOverflow.visible,
+          maxLines: 2,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w800,
+            height: 1.2,
           ),
         ),
         actions: [
@@ -66,6 +66,7 @@ class AppShell extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
+                fontSize: 12,
               ),
             ),
           ),
