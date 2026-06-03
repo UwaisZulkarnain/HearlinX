@@ -67,7 +67,7 @@ class AppText {
   String get allHistory => isMs ? 'Semua Sejarah' : 'All History';
   String get allScreenings => isMs ? 'Semua Saringan' : 'All Screenings';
   String get noAllScreenings =>
-      isMs ? 'Tiada saringan direkodkan' : 'No screenings recorded';
+      isMs ? 'Tiada saringan direkodkan.' : 'No screenings recorded.';
   String get noTodayScreenings =>
       isMs ? 'Tiada saringan hari ini' : 'No screenings today';
   String get totalScreenedToday =>
@@ -95,6 +95,12 @@ class AppText {
   String get followupDetails => isMs ? 'Butiran Susulan' : 'Follow-up Details';
   String get timeline => isMs ? 'Garis Masa' : 'Timeline';
   String get status => 'Status';
+  String get statusLabel => 'Status';
+  String get wardLabel => isMs ? 'Wad' : 'Ward';
+  String get totalCount => isMs ? 'Jumlah' : 'Total';
+  String get referCount => isMs ? 'Rujukan' : 'Referrals';
+  String get ratePercentage => isMs ? 'Kadar %' : 'Rate %';
+  String get dateLabel => isMs ? 'Tarikh' : 'Date';
   String get appointmentDate => isMs ? 'Tarikh Temujanji' : 'Appointment Date';
   String get ltfuReason => isMs ? 'Sebab LTFU' : 'LTFU Reason';
   String get contactAttempts => isMs ? 'Cubaan Hubungan' : 'Contact Attempts';
@@ -111,6 +117,18 @@ class AppText {
   String get logout => isMs ? 'Log Keluar' : 'Logout';
   String get loading => isMs ? 'Memuatkan...' : 'Loading...';
   String get error => isMs ? 'Sesuatu telah berlaku' : 'Something went wrong';
+  String get sessionExpired => isMs
+      ? 'Sesi telah tamat. Sila log masuk semula.'
+      : 'Session expired. Please sign in again.';
+  String get serverDataError =>
+      isMs ? 'Ralat data dari pelayan.' : 'Server data error.';
+  String get slowConnection => isMs
+      ? 'Sambungan lambat. Sila cuba semula.'
+      : 'Connection is slow. Please try again.';
+  String get noInternet => isMs
+      ? 'Sambungan internet tiada. Sila cuba semula.'
+      : 'No internet connection. Please try again.';
+  String get unknownError => isMs ? 'Ralat tidak diketahui' : 'Unknown error';
   String get retry => isMs ? 'Cuba semula' : 'Retry';
   String get cancel => isMs ? 'Batal' : 'Cancel';
   String get confirm => isMs ? 'Sahkan' : 'Confirm';
@@ -137,6 +155,24 @@ class AppText {
   String get noNationalData =>
       isMs ? 'Tiada data kebangsaan tersedia.' : 'No national data available.';
   String get screening => isMs ? 'Saringan' : 'Screenings';
+  String noResponseFor(String label) =>
+      isMs ? 'Tiada respons untuk $label.' : 'No response for $label.';
+  String get monthlyReportLabel => isMs ? 'laporan bulanan' : 'monthly report';
+  String get followupListLabel => isMs ? 'senarai susulan' : 'follow-up list';
+  String get todayScreeningsLabel =>
+      isMs ? 'saringan hari ini' : 'today screenings';
+  String get benchmarkLabel => isMs ? 'benchmark' : 'benchmark';
+  String get coverageRateLabel => isMs ? 'kadar liputan' : 'coverage rate';
+  String get wardBreakdownLabel => isMs ? 'pecahan wad' : 'ward breakdown';
+  String get dashboardNoDataMessage => isMs
+      ? 'Tiada data dashboard tersedia selepas dimuatkan. Cuba semula atau semak sambungan pelayan.'
+      : 'No dashboard data is available after loading. Try again or check the server connection.';
+  String get followupStatusUpdated => isMs
+      ? 'Status susulan berjaya dikemas kini'
+      : 'Follow-up status updated successfully';
+  String get noDueDate => isMs ? 'Tiada tarikh' : 'No date';
+  String get noTimelineEvents =>
+      isMs ? 'Tiada peristiwa garis masa lagi.' : 'No timeline events yet.';
 
   // Coordinator Dashboard
   String welcomeGreeting(String name) => isMs

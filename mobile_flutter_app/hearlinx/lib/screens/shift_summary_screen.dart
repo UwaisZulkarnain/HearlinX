@@ -40,6 +40,8 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
   }
 
   Future<void> _loadData() async {
+    final t = context.read<LanguageProvider>().text;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -48,7 +50,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
     try {
       final token = await _storage.read(key: 'jwt_token');
       if (token == null || token.isEmpty) {
-        throw Exception('Sesi telah tamat. Sila log masuk semula.');
+        throw Exception(t.sessionExpired);
       }
 
       final headers = {'Authorization': 'Bearer $token'};
@@ -72,11 +74,13 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
 
       if (summaryResponse.statusCode < 200 ||
           summaryResponse.statusCode >= 300) {
-        throw Exception(_parseErrorMessage(summaryResponse.body));
+        throw Exception(
+          _parseErrorMessage(summaryResponse.body, t.unknownError),
+        );
       }
 
       if (listResponse.statusCode < 200 || listResponse.statusCode >= 300) {
-        throw Exception(_parseErrorMessage(listResponse.body));
+        throw Exception(_parseErrorMessage(listResponse.body, t.unknownError));
       }
 
       late Map<String, dynamic> summaryJson;
@@ -86,10 +90,10 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
         summaryJson = jsonDecode(summaryResponse.body) as Map<String, dynamic>;
       } on FormatException {
         if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
+        setState(() => _errorMessage = t.serverDataError);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.serverDataError)));
         return;
       }
 
@@ -97,10 +101,10 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
         listJson = jsonDecode(listResponse.body) as List<dynamic>;
       } on FormatException {
         if (!mounted) return;
-        setState(() => _errorMessage = 'Ralat data dari pelayan.');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ralat data dari pelayan.')),
-        );
+        setState(() => _errorMessage = t.serverDataError);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(t.serverDataError)));
         return;
       }
 
@@ -124,7 +128,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
       }
 
       setState(() {
-        _errorMessage = 'Sambungan lambat. Sila cuba semula.';
+        _errorMessage = t.slowConnection;
         _isLoading = false;
       });
     } catch (e) {
@@ -139,7 +143,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
     }
   }
 
-  String _parseErrorMessage(String responseBody) {
+  String _parseErrorMessage(String responseBody, String fallback) {
     try {
       final json = jsonDecode(responseBody) as Map<String, dynamic>;
       final detail = json['detail'];
@@ -147,7 +151,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
         return detail;
       }
     } catch (_) {}
-    return 'Ralat tidak diketahui';
+    return fallback;
   }
 
   String _maskSystemId(String systemId) {
@@ -183,6 +187,15 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
       return _dangerColor;
     }
     return _successColor;
+  }
+
+  String _formatDateTime(_ScreeningListItem item) {
+    if (_showAllHistory) {
+      return DateFormat(
+        'd MMM yyyy, hh:mm a',
+      ).format(item.screeningDate.toLocal());
+    }
+    return DateFormat('hh:mm a').format(item.screeningDate.toLocal());
   }
 
   Widget _buildMetricCard(String label, int value, Color color) {
@@ -249,7 +262,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
   Widget _buildScreeningRow(_ScreeningListItem item) {
     final badgeLabel = _badgeLabel(item);
     final badgeColor = _badgeColor(item);
-    final timeText = DateFormat('hh:mm a').format(item.screeningDate.toLocal());
+    final timeText = _formatDateTime(item);
     final leftBorderColor = item.earLeft == 'refer' || item.earRight == 'refer'
         ? _dangerColor
         : _successColor;
@@ -360,9 +373,9 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                 _accentColor,
               ),
               const SizedBox(width: 12),
-              _buildMetricCard('Lulus', _summary.totalPass, _successColor),
+              _buildMetricCard(t.pass, _summary.totalPass, _successColor),
               const SizedBox(width: 12),
-              _buildMetricCard('Rujuk', _summary.totalRefer, _dangerColor),
+              _buildMetricCard(t.refer, _summary.totalRefer, _dangerColor),
             ],
           ),
           if (!_showAllHistory) ...[

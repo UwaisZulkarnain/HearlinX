@@ -45,6 +45,8 @@ class _CoordinatorDashboardScreenState
   }
 
   Future<void> _loadData() async {
+    final t = context.read<LanguageProvider>().text;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -53,7 +55,7 @@ class _CoordinatorDashboardScreenState
     try {
       final token = await _authService.getToken();
       if (token == null || token.isEmpty) {
-        throw Exception('Sesi telah tamat. Sila log masuk semula.');
+        throw Exception(t.sessionExpired);
       }
 
       final headers = {'Authorization': 'Bearer $token'};
@@ -99,32 +101,32 @@ class _CoordinatorDashboardScreenState
 
       final monthlyResponse = responses[0];
       if (monthlyResponse == null) {
-        _finishLoadingWithError('Tiada respons untuk laporan bulanan.');
+        _finishLoadingWithError(t.noResponseFor(t.monthlyReportLabel));
         return;
       }
       final followUpsResponse = responses[1];
       if (followUpsResponse == null) {
-        _finishLoadingWithError('Tiada respons untuk senarai susulan.');
+        _finishLoadingWithError(t.noResponseFor(t.followupListLabel));
         return;
       }
       final screeningsResponse = responses[2];
       if (screeningsResponse == null) {
-        _finishLoadingWithError('Tiada respons untuk saringan hari ini.');
+        _finishLoadingWithError(t.noResponseFor(t.todayScreeningsLabel));
         return;
       }
       final benchmarkResponse = responses[3];
       if (benchmarkResponse == null) {
-        _finishLoadingWithError('Tiada respons untuk benchmark.');
+        _finishLoadingWithError(t.noResponseFor(t.benchmarkLabel));
         return;
       }
       final coverageResponse = responses[4];
       if (coverageResponse == null) {
-        _finishLoadingWithError('Tiada respons untuk kadar liputan.');
+        _finishLoadingWithError(t.noResponseFor(t.coverageRateLabel));
         return;
       }
       final wardBreakdownResponse = responses[5];
       if (wardBreakdownResponse == null) {
-        _finishLoadingWithError('Tiada respons untuk pecahan wad.');
+        _finishLoadingWithError(t.noResponseFor(t.wardBreakdownLabel));
         return;
       }
 
@@ -171,13 +173,68 @@ class _CoordinatorDashboardScreenState
         _isLoading = false;
       });
     } on SocketException {
-      _finishLoadingWithError('Sambungan internet tiada. Sila cuba semula.');
+      _finishLoadingWithError(t.noInternet);
     } on TimeoutException {
-      _finishLoadingWithError('Sambungan lambat. Sila cuba semula.');
+      _finishLoadingWithError(t.slowConnection);
     } on FormatException {
-      _finishLoadingWithError('Ralat data dari pelayan.');
+      _finishLoadingWithError(t.serverDataError);
     } catch (e) {
       _finishLoadingWithError(e.toString());
+    }
+  }
+
+  Future<void> _toggleHistory(bool showAll) async {
+    final t = context.read<LanguageProvider>().text;
+
+    if (_showAllHistory == showAll) {
+      return;
+    }
+
+    setState(() {
+      _showAllHistory = showAll;
+    });
+
+    try {
+      final token = await _authService.getToken();
+      if (token == null || token.isEmpty) {
+        throw Exception(t.sessionExpired);
+      }
+
+      final endpoint = showAll
+          ? '${ApiConfig.baseUrl}/screenings/'
+          : '${ApiConfig.baseUrl}/screenings/?today=true';
+      final response = await http
+          .get(Uri.parse(endpoint), headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(_parseErrorMessage(response.body));
+      }
+
+      final screeningJson = _decodeListResponse(response);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _screenings = screeningJson
+            .map(
+              (item) =>
+                  _HospitalScreeningItem.fromJson(item as Map<String, dynamic>),
+            )
+            .toList();
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppStyles.danger,
+        ),
+      );
     }
   }
 
@@ -218,7 +275,7 @@ class _CoordinatorDashboardScreenState
     if (body.trim().isNotEmpty) {
       return body.trim();
     }
-    return 'Ralat tidak diketahui';
+    return context.read<LanguageProvider>().text.unknownError;
   }
 
   Future<void> _updateFollowUpStatus(String id, String status) async {
@@ -229,7 +286,7 @@ class _CoordinatorDashboardScreenState
     try {
       final token = await _authService.getToken();
       if (token == null || token.isEmpty) {
-        throw Exception('Sesi telah tamat. Sila log masuk semula.');
+        throw Exception(context.read<LanguageProvider>().text.sessionExpired);
       }
 
       final response = await _apiService.client
@@ -252,8 +309,10 @@ class _CoordinatorDashboardScreenState
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Status susulan berjaya dikemas kini'),
+        SnackBar(
+          content: Text(
+            context.read<LanguageProvider>().text.followupStatusUpdated,
+          ),
           backgroundColor: AppStyles.success,
         ),
       );
@@ -275,7 +334,7 @@ class _CoordinatorDashboardScreenState
   Future<List<_FollowUpEvent>> _fetchFollowUpEvents(String id) async {
     final token = await _authService.getToken();
     if (token == null || token.isEmpty) {
-      throw Exception('Sesi telah tamat. Sila log masuk semula.');
+      throw Exception(context.read<LanguageProvider>().text.sessionExpired);
     }
     final response = await _apiService.client.get(
       Uri.parse('${_apiService.baseEndpoint}/followups/$id/events'),
@@ -290,7 +349,7 @@ class _CoordinatorDashboardScreenState
           .map((item) => _FollowUpEvent.fromJson(item as Map<String, dynamic>))
           .toList();
     } on FormatException {
-      throw Exception('Ralat data dari pelayan.');
+      throw Exception(context.read<LanguageProvider>().text.serverDataError);
     }
   }
 
@@ -488,9 +547,7 @@ class _CoordinatorDashboardScreenState
             _sectionCard(
               title: t.dashboard,
               child: Text(
-                t.isMs
-                    ? 'Tiada data dashboard tersedia selepas dimuatkan. Cuba semula atau semak sambungan pelayan.'
-                    : 'No dashboard data is available after loading. Try again or check the server connection.',
+                t.dashboardNoDataMessage,
                 style: const TextStyle(color: AppStyles.textSecondary),
               ),
             ),
@@ -773,29 +830,29 @@ class _CoordinatorDashboardScreenState
                       headingRowColor: WidgetStateProperty.all(
                         Colors.grey[100],
                       ),
-                      columns: const [
+                      columns: [
                         DataColumn(
                           label: Text(
-                            'Wad',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            t.wardLabel,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                         DataColumn(
                           label: Text(
-                            'Jumlah',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            t.totalCount,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                         DataColumn(
                           label: Text(
-                            'Rujukan',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            t.referCount,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                         DataColumn(
                           label: Text(
-                            'Kadar %',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                            t.ratePercentage,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
                       ],
@@ -854,7 +911,7 @@ class _CoordinatorDashboardScreenState
                 : Column(
                     children: _followUps.take(4).map((item) {
                       final dueText = item.dueDate == null
-                          ? 'Tiada tarikh'
+                          ? t.noDueDate
                           : DateFormat('d MMM yyyy').format(item.dueDate!);
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -876,9 +933,9 @@ class _CoordinatorDashboardScreenState
                               runSpacing: 6,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Text('Tarikh: $dueText'),
+                                Text('${t.dateLabel}: $dueText'),
                                 _urgencyBadge(item, t),
-                                Text('Status: ${item.status}'),
+                                Text('${t.statusLabel}: ${item.status}'),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -952,8 +1009,7 @@ class _CoordinatorDashboardScreenState
                       GestureDetector(
                         onTap: () {
                           if (_showAllHistory) {
-                            setState(() => _showAllHistory = false);
-                            _loadData();
+                            _toggleHistory(false);
                           }
                         },
                         child: Container(
@@ -982,8 +1038,7 @@ class _CoordinatorDashboardScreenState
                       GestureDetector(
                         onTap: () {
                           if (!_showAllHistory) {
-                            setState(() => _showAllHistory = true);
-                            _loadData();
+                            _toggleHistory(true);
                           }
                         },
                         child: Container(
@@ -1183,9 +1238,11 @@ class _CoordinatorDashboardScreenState
                       ),
                       const SizedBox(height: 8),
                       if (events.isEmpty)
-                        const Text(
-                          'No timeline events yet.',
-                          style: TextStyle(color: AppStyles.textSecondary),
+                        Text(
+                          t.noTimelineEvents,
+                          style: const TextStyle(
+                            color: AppStyles.textSecondary,
+                          ),
                         )
                       else
                         ...events.map(
