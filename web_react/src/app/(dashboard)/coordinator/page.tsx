@@ -44,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useLang } from "@/context/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { getToken, getUserFromToken } from "@/lib/auth";
 import type { Role } from "@/types";
@@ -87,11 +88,25 @@ type TrendPoint = MonthlyReport & {
   label: string;
 };
 
-const benchmarkValues = [
-  { key: "screen1m", value: 75 },
-  { key: "diagnose3m", value: 60 },
-  { key: "intervene6m", value: 45 },
-] as const;
+type BenchmarkReport = {
+  screened_by_1_month_pct: number;
+  diagnosed_by_3_months_pct: number;
+};
+
+type CoverageReport = {
+  total_babies_registered: number;
+  total_babies_screened: number;
+  coverage_rate_pct: number;
+};
+
+type WardBreakdownItem = {
+  ward?: string | null;
+  total_screenings: number;
+  total_refer: number;
+  refer_rate_pct: number;
+};
+
+type WardBreakdownResponse = WardBreakdownItem[] | { wards: WardBreakdownItem[] };
 
 function getMonthRequests() {
   const now = new Date();
@@ -116,7 +131,7 @@ function calculateRate(part: number, total: number) {
 }
 
 function formatPercent(value: number) {
-  return `${value}%`;
+  return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
 }
 
 function decodeTokenPayload(): AuthPayload | null {
@@ -146,15 +161,43 @@ function decodeTokenPayload(): AuthPayload | null {
 }
 
 function getBenchmarkColor(value: number) {
-  if (value >= 80) {
+  if (value >= 90) {
     return "bg-emerald-500";
   }
 
-  if (value >= 50) {
+  if (value >= 70) {
     return "bg-amber-500";
   }
 
   return "bg-red-500";
+}
+
+function getBenchmarkTextColor(value: number) {
+  if (value >= 90) {
+    return "text-emerald-700";
+  }
+
+  if (value >= 70) {
+    return "text-amber-700";
+  }
+
+  return "text-red-700";
+}
+
+function getReferRateClassName(value: number) {
+  if (value < 10) {
+    return "bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
+  }
+
+  if (value <= 20) {
+    return "bg-amber-50 text-amber-700 hover:bg-amber-50";
+  }
+
+  return "bg-red-50 text-red-700 hover:bg-red-50";
+}
+
+function progressWidth(value: number) {
+  return `${Math.min(Math.max(value, 0), 100)}%`;
 }
 
 function getScreeningResult(screening: Screening) {
@@ -179,10 +222,17 @@ function shortId(value: string) {
 
 export default function CoordinatorDashboardPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const { lang, t } = useLang();
   const [monthlyReports, setMonthlyReports] = useState<TrendPoint[]>([]);
   const [screenings, setScreenings] = useState<Screening[]>([]);
+  const [benchmark, setBenchmark] = useState<BenchmarkReport | null>(null);
+  const [coverage, setCoverage] = useState<CoverageReport | null>(null);
+  const [wardBreakdown, setWardBreakdown] = useState<WardBreakdownItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBenchmarkLoading, setIsBenchmarkLoading] = useState(true);
+  const [isCoverageLoading, setIsCoverageLoading] = useState(true);
+  const [isWardBreakdownLoading, setIsWardBreakdownLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [userName, setUserName] = useState("");
 
@@ -235,12 +285,91 @@ export default function CoordinatorDashboardPage() {
     void loadDashboard();
   }, [router]);
 
+  useEffect(() => {
+    if (user?.role !== "coordinator") {
+      return;
+    }
+
+    async function loadBenchmark() {
+      setIsBenchmarkLoading(true);
+
+      try {
+        const response = await api.get<BenchmarkReport>("/reports/benchmark");
+        setBenchmark(response.data);
+      } catch {
+        setHasError(true);
+      } finally {
+        setIsBenchmarkLoading(false);
+      }
+    }
+
+    void loadBenchmark();
+  }, [user?.role]);
+
+  useEffect(() => {
+    if (user?.role !== "coordinator") {
+      return;
+    }
+
+    async function loadCoverage() {
+      setIsCoverageLoading(true);
+
+      try {
+        const response = await api.get<CoverageReport>("/reports/coverage");
+        setCoverage(response.data);
+      } catch {
+        setHasError(true);
+      } finally {
+        setIsCoverageLoading(false);
+      }
+    }
+
+    void loadCoverage();
+  }, [user?.role]);
+
+  useEffect(() => {
+    if (user?.role !== "coordinator") {
+      return;
+    }
+
+    async function loadWardBreakdown() {
+      setIsWardBreakdownLoading(true);
+
+      try {
+        const response = await api.get<WardBreakdownResponse>(
+          "/reports/ward-breakdown"
+        );
+        const wards = Array.isArray(response.data)
+          ? response.data
+          : response.data.wards ?? [];
+        setWardBreakdown(wards);
+      } catch {
+        setHasError(true);
+      } finally {
+        setIsWardBreakdownLoading(false);
+      }
+    }
+
+    void loadWardBreakdown();
+  }, [user?.role]);
+
   const latestReport = monthlyReports.at(-1);
   const totalScreened = latestReport?.total_screenings ?? 0;
   const passRate = calculateRate(latestReport?.total_pass ?? 0, totalScreened);
   const referRate = calculateRate(latestReport?.total_refer ?? 0, totalScreened);
   const ltfuCount = latestReport?.total_not_tested ?? 0;
   const outstandingFollowUps = latestReport?.total_refer ?? 0;
+  const benchmarkValues = [
+    {
+      label: "Disaring dalam 1 bulan",
+      value: benchmark?.screened_by_1_month_pct ?? 0,
+    },
+    {
+      label: "Diagnosis dalam 3 bulan",
+      value: benchmark?.diagnosed_by_3_months_pct ?? 0,
+    },
+  ];
+  const coverageRate = coverage?.coverage_rate_pct ?? 0;
 
   const chartData = useMemo(
     () =>
@@ -403,26 +532,142 @@ export default function CoordinatorDashboardPage() {
               <CardDescription>{t("benchmarkDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {benchmarkValues.map((benchmark) => (
-                <div className="space-y-2" key={benchmark.key}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-slate-700">
-                      {t(benchmark.key)}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-950">
-                      {formatPercent(benchmark.value)}
-                    </p>
+              {isBenchmarkLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full bg-slate-100" />
+                  <Skeleton className="h-12 w-full bg-slate-100" />
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                    Sasaran KKM ≥90%
                   </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                  {benchmarkValues.map((item) => (
+                    <div className="space-y-2" key={item.label}>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-slate-700">
+                          {item.label}: {formatPercent(item.value)}
+                        </p>
+                        <p
+                          className={`text-sm font-semibold ${getBenchmarkTextColor(
+                            item.value
+                          )}`}
+                        >
+                          {formatPercent(item.value)}
+                        </p>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`${getBenchmarkColor(
+                            item.value
+                          )} h-full rounded-full transition-all`}
+                          style={{ width: progressWidth(item.value) }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
+          <Card className="border-slate-200 bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-slate-950">
+                {t("coverageRate")}
+              </CardTitle>
+              <CardDescription>{t("currentMonth")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isCoverageLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-16 w-32 bg-slate-100" />
+                  <Skeleton className="h-3 w-full bg-slate-100" />
+                  <Skeleton className="h-4 w-40 bg-slate-100" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-end gap-2">
+                    <span className="text-5xl font-semibold tracking-normal text-[#0F766E]">
+                      {formatPercent(coverageRate)}
+                    </span>
+                    <span className="pb-2 text-sm font-medium text-slate-500">
+                      {t("coverageRate")}
+                    </span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={`${getBenchmarkColor(
-                        benchmark.value
-                      )} h-full rounded-full transition-all`}
-                      style={{ width: `${benchmark.value}%` }}
+                      className="h-full rounded-full bg-[#0F766E] transition-all"
+                      style={{ width: progressWidth(coverageRate) }}
                     />
                   </div>
+                  <p className="text-sm font-medium text-slate-600">
+                    {(coverage?.total_babies_screened ?? 0).toLocaleString()} /{" "}
+                    {(coverage?.total_babies_registered ?? 0).toLocaleString()}{" "}
+                    bayi disaring
+                  </p>
                 </div>
-              ))}
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-slate-950">Pecahan Wad</CardTitle>
+              <CardDescription>{t("referRate")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isWardBreakdownLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <Skeleton
+                      className="h-10 w-full bg-slate-100"
+                      key={index}
+                    />
+                  ))}
+                </div>
+              ) : wardBreakdown.length === 0 ? (
+                <div className="rounded-md border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500">
+                  {t("notRecorded")}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ward</TableHead>
+                      <TableHead>Screenings</TableHead>
+                      <TableHead>Rujuk</TableHead>
+                      <TableHead>Refer Rate %</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {wardBreakdown.map((ward, index) => (
+                      <TableRow key={`${ward.ward ?? "not-recorded"}-${index}`}>
+                        <TableCell className="font-medium text-slate-950">
+                          {ward.ward ?? t("notRecorded")}
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          {ward.total_screenings.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          {ward.total_refer.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={getReferRateClassName(
+                              ward.refer_rate_pct
+                            )}
+                          >
+                            {formatPercent(ward.refer_rate_pct)}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </section>
