@@ -28,6 +28,7 @@ class _CoordinatorDashboardScreenState
   final _authService = AuthService();
   final _apiService = ApiService();
   bool _isLoading = true;
+  bool _showAllHistory = false;
   String? _errorMessage;
   String _coordinatorName = '';
   _MonthlySummary _summary = const _MonthlySummary();
@@ -56,6 +57,9 @@ class _CoordinatorDashboardScreenState
       }
 
       final headers = {'Authorization': 'Bearer $token'};
+      final screeningsEndpoint = _showAllHistory
+          ? '${ApiConfig.baseUrl}/screenings/'
+          : '${ApiConfig.baseUrl}/screenings/?today=true';
 
       // Get coordinator name
       final displayName = await _authService.getDisplayName();
@@ -71,10 +75,7 @@ class _CoordinatorDashboardScreenState
             .get(Uri.parse('${ApiConfig.baseUrl}/followups/'), headers: headers)
             .timeout(const Duration(seconds: 15)),
         http
-            .get(
-              Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
-              headers: headers,
-            )
+            .get(Uri.parse(screeningsEndpoint), headers: headers)
             .timeout(const Duration(seconds: 15)),
         http
             .get(
@@ -355,7 +356,11 @@ class _CoordinatorDashboardScreenState
     );
   }
 
-  Widget _sectionCard({required String title, required Widget child}) {
+  Widget _sectionCard({
+    String? title,
+    Widget? titleWidget,
+    required Widget child,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -376,14 +381,15 @@ class _CoordinatorDashboardScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppStyles.textPrimary,
-            ),
-          ),
+          titleWidget ??
+              Text(
+                title ?? '',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppStyles.textPrimary,
+                ),
+              ),
           const SizedBox(height: 14),
           child,
         ],
@@ -920,10 +926,99 @@ class _CoordinatorDashboardScreenState
           ),
           const SizedBox(height: 18),
           _sectionCard(
-            title: t.todayScreenings,
+            titleWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _showAllHistory ? t.allScreenings : t.todayScreenings,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppStyles.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (_showAllHistory) {
+                            setState(() => _showAllHistory = false);
+                            _loadData();
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: !_showAllHistory
+                                ? Colors.white
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            t.today,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: !_showAllHistory
+                                  ? AppStyles.textPrimary
+                                  : AppStyles.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          if (!_showAllHistory) {
+                            setState(() => _showAllHistory = true);
+                            _loadData();
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _showAllHistory
+                                ? Colors.white
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            t.allHistory,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: _showAllHistory
+                                  ? AppStyles.textPrimary
+                                  : AppStyles.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             child: _screenings.isEmpty
                 ? Text(
-                    t.todayScreeningRecorded,
+                    _showAllHistory
+                        ? t.noAllScreenings
+                        : t.todayScreeningRecorded,
                     style: const TextStyle(color: AppStyles.textSecondary),
                   )
                 : Column(
