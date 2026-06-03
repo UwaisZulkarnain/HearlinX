@@ -120,6 +120,8 @@ class _MohDashboardScreenState extends State<MohDashboardScreen> {
         return Icons.check_circle_rounded;
       } else if (label.contains('Refer') || label.contains('Rujuk')) {
         return Icons.arrow_forward_rounded;
+      } else if (label.contains('LTFU')) {
+        return Icons.warning_rounded;
       }
       return Icons.info_rounded;
     }

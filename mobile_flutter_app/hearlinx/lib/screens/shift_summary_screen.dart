@@ -354,7 +354,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
           Row(
             children: [
               _buildMetricCard(
-                'Disaring Hari Ini',
+                t.screenedToday,
                 _summary.totalScreened,
                 _accentColor,
               ),
@@ -425,8 +425,8 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Beristirahat dan nikmati hari anda!',
+                  Text(
+                    t.restMessage,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,

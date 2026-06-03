@@ -534,9 +534,9 @@ class _CoordinatorDashboardScreenState
                             color: Color(0xFF18C7A5),
                           ),
                           const SizedBox(width: 6),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Saringan Terakhir',
+                              t.lastScreening,
                               style: TextStyle(
                                 color: AppStyles.textSecondary,
                                 fontWeight: FontWeight.w600,
@@ -583,9 +583,9 @@ class _CoordinatorDashboardScreenState
                             color: Color(0xFF18C7A5),
                           ),
                           const SizedBox(width: 6),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Penyaring Aktif',
+                              t.activeScreeners,
                               style: TextStyle(
                                 color: AppStyles.textSecondary,
                                 fontWeight: FontWeight.w600,
@@ -615,7 +615,7 @@ class _CoordinatorDashboardScreenState
           const SizedBox(height: 18),
           // Coverage Rate Section
           _sectionCard(
-            title: 'Kadar Liputan Saringan',
+            title: t.coverageRateTitle,
             child: Column(
               children: [
                 Center(
@@ -659,7 +659,7 @@ class _CoordinatorDashboardScreenState
           const SizedBox(height: 18),
           // 1-3-6 KKM Benchmark Section
           _sectionCard(
-            title: 'Penanda Aras 1-3-6 KKM',
+            title: t.benchmarkTitle,
             child: Column(
               children: [
                 // 1 Month Screened
@@ -669,8 +669,8 @@ class _CoordinatorDashboardScreenState
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Disaring dalam 1 bulan',
+                        Text(
+                          t.screenedBy1Month,
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         Text(
@@ -705,8 +705,8 @@ class _CoordinatorDashboardScreenState
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Diagnosis dalam 3 bulan',
+                        Text(
+                          t.diagnosedBy3Months,
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                         Text(
@@ -740,8 +740,8 @@ class _CoordinatorDashboardScreenState
                     color: Colors.blue.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text(
-                    'Sasaran KKM: ≥90%',
+                  child: Text(
+                    t.kkmTarget,
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF2563EB),
@@ -755,10 +755,10 @@ class _CoordinatorDashboardScreenState
           const SizedBox(height: 18),
           // Ward Breakdown Section
           _sectionCard(
-            title: 'Pecahan Mengikut Wad',
+            title: t.wardBreakdown,
             child: _wards.isEmpty
                 ? Text(
-                    'Tiada data wad',
+                    t.noWardData,
                     style: const TextStyle(color: AppStyles.textSecondary),
                   )
                 : SingleChildScrollView(

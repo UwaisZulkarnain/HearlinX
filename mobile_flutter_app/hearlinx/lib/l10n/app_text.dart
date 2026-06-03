@@ -136,9 +136,23 @@ class AppText {
       ? 'Selamat datang, $name! Semoga hari anda produktif. 🌟'
       : 'Welcome, $name! Have a productive day. 🌟';
   String get lastScreening => isMs ? 'Saringan Terakhir' : 'Last Screening';
+  String get activeScreeners => isMs ? 'Penyaring Aktif' : 'Active Screeners';
+  String get screeningType => isMs ? 'Jenis Saringan' : 'Screening Type';
+  String get coverageRateTitle =>
+      isMs ? 'Kadar Liputan Saringan' : 'Screening Coverage Rate';
+  String get benchmarkTitle =>
+      isMs ? 'Penanda Aras 1-3-6 KKM' : '1-3-6 KKM Benchmark';
+  String get screenedBy1Month =>
+      isMs ? 'Disaring dalam 1 bulan' : 'Screened within 1 month';
+  String get diagnosedBy3Months =>
+      isMs ? 'Diagnosis dalam 3 bulan' : 'Diagnosed within 3 months';
+  String get kkmTarget => isMs ? 'Sasaran KKM: ≥90%' : 'KKM Target: ≥90%';
+  String get wardBreakdown => isMs ? 'Pecahan Mengikut Wad' : 'Ward Breakdown';
+  String get noWardData => isMs ? 'Tiada data wad' : 'No ward data';
+  String get screenedToday => isMs ? 'Disaring Hari Ini' : 'Screened Today';
+  String get restMessage =>
+      isMs ? 'Beristirahat dan nikmati hari anda!' : 'Rest and enjoy your day!';
   String get coverageRate => isMs ? 'Kadar Liputan' : 'Coverage Rate';
-  String get activeScreeners =>
-      isMs ? 'Penyaring Aktif Hari Ini' : 'Active Screeners Today';
   String get totalBabiesRegistered =>
       isMs ? 'Jumlah Bayi Terdaftar' : 'Total Babies Registered';
   String get lastUpdated => isMs ? 'Dikemas kini terakhir' : 'Last updated';

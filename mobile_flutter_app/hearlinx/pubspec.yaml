@@ -99,6 +99,7 @@ flutter:
 
 flutter_launcher_icons:
   android: true
-  ios: true
-  image_path: "assests/hearlinx_logo.jpeg"
-  image_path_ios: "assests/hearlinx_logo.jpeg"
+  ios: false
+  image_path: "assets/icon.png"
+  adaptive_icon_background: "#18C7A5"
+  min_sdk_android: 21

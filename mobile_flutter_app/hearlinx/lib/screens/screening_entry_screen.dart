@@ -810,11 +810,13 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
   }
 
   Widget _buildScreeningTypeField() {
+    final t = context.watch<LanguageProvider>().text;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Screening Type',
+        Text(
+          t.screeningType,
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
