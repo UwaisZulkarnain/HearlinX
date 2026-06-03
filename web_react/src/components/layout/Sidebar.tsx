@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Baby,
   ClipboardList,
+  Ear,
   FileBarChart,
   LayoutDashboard,
   LogOut,
@@ -43,6 +44,11 @@ export function Sidebar({ navItems, userName, roleLabel }: SidebarProps) {
       href: "/coordinator/followups",
       label: t("navFollowups"),
       icon: ClipboardList,
+    },
+    {
+      href: "/coordinator/screenings",
+      label: t("recentScreenings"),
+      icon: Ear,
     },
     {
       href: "/coordinator/babies",

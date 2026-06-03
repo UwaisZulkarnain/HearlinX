@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Ear, Eye, LockKeyhole, Loader2 } from "lucide-react";
 
 import api from "@/lib/api";
-import { getUserFromToken, saveToken } from "@/lib/auth";
+import { getUserFromToken, removeToken, saveToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +31,7 @@ type Hospital = {
 };
 
 const roleRedirects: Record<Role, string> = {
-  screener: "/screener",
+  screener: "/login",
   coordinator: "/coordinator",
   unhs_coordinator: "/unhs",
   moh: "/moh",
@@ -97,6 +97,12 @@ export default function LoginPage() {
 
       if (!user) {
         throw new Error("Invalid authentication token");
+      }
+
+      if (user.role === "screener") {
+        removeToken();
+        setError("Sila gunakan aplikasi mudah alih / Please use the mobile app");
+        return;
       }
 
       router.push(roleRedirects[user.role]);
