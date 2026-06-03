@@ -9,10 +9,11 @@ import '../models/screening.dart';
 import 'api_service.dart';
 
 class OfflineService {
-  OfflineService({ApiService? apiService}) : _apiService = apiService ?? ApiService();
+  OfflineService({ApiService? apiService})
+    : _apiService = apiService ?? ApiService();
 
   static const _databaseName = 'hearlinx_offline.db';
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 2;
   static const _pendingScreeningsTable = 'pending_screenings';
   static Database? _database;
 
@@ -42,9 +43,17 @@ class OfflineService {
             ear_left TEXT NOT NULL,
             ear_right TEXT NOT NULL,
             notes TEXT,
+            screening_date TEXT,
             created_at TEXT NOT NULL
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'ALTER TABLE $_pendingScreeningsTable ADD COLUMN screening_date TEXT',
+          );
+        }
       },
     );
 
@@ -60,6 +69,7 @@ class OfflineService {
       'ear_left': screening.earLeft,
       'ear_right': screening.earRight,
       'notes': screening.notes,
+      'screening_date': screening.screeningDate,
       'created_at': DateTime.now().toIso8601String(),
     });
   }
@@ -85,6 +95,7 @@ class OfflineService {
         earLeft: row['ear_left'] as String? ?? '',
         earRight: row['ear_right'] as String? ?? '',
         notes: row['notes'] as String?,
+        screeningDate: row['screening_date'] as String?,
       );
 
       try {
@@ -100,6 +111,8 @@ class OfflineService {
             'ear_left': screening.earLeft,
             'ear_right': screening.earRight,
             'notes': screening.notes,
+            if (screening.screeningDate != null)
+              'screening_date': screening.screeningDate,
           }),
         );
 

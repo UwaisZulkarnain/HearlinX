@@ -6,6 +6,7 @@ class Screening {
     this.earLeft = '',
     this.earRight = '',
     this.notes,
+    this.screeningDate,
     this.screenedBy,
     this.screenedAt,
     this.overallResult,
@@ -19,6 +20,7 @@ class Screening {
       earLeft: json['ear_left'] as String? ?? '',
       earRight: json['ear_right'] as String? ?? '',
       notes: json['notes'] as String?,
+      screeningDate: json['screening_date'] as String?,
       screenedBy: json['screened_by'] as String?,
       screenedAt: json['screened_at'] as String?,
       overallResult: json['overall_result'] as String?,
@@ -31,6 +33,7 @@ class Screening {
   final String earLeft;
   final String earRight;
   final String? notes;
+  final String? screeningDate;
   final String? screenedBy;
   final String? screenedAt;
   final String? overallResult;
@@ -43,6 +46,7 @@ class Screening {
       'ear_left': earLeft,
       'ear_right': earRight,
       if (notes != null) 'notes': notes,
+      if (screeningDate != null) 'screening_date': screeningDate,
       if (screenedBy != null) 'screened_by': screenedBy,
       if (screenedAt != null) 'screened_at': screenedAt,
       if (overallResult != null) 'overall_result': overallResult,

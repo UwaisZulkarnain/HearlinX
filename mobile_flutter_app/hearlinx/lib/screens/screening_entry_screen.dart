@@ -12,6 +12,7 @@ import '../config/api_config.dart';
 import '../models/baby.dart';
 import '../models/screening.dart';
 import '../providers/language_provider.dart';
+import '../services/auth_service.dart';
 import '../services/offline_service.dart';
 import '../ui/app_styles.dart';
 
@@ -31,6 +32,7 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
   static const _darkPrimaryColor = Color(0xFF0D6E63);
 
   final _storage = const FlutterSecureStorage();
+  final _authService = AuthService();
   final _offlineService = OfflineService();
   final _notesController = TextEditingController();
   final _manualIdController = TextEditingController();
@@ -39,9 +41,30 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
   String _screeningType = 'TEOAE';
   String? _earLeftResult;
   String? _earRightResult;
+  DateTime? _selectedDate = DateTime.now();
+  String _role = '';
   bool _isLoading = false;
   bool _showQrScanner = false;
   bool _showManualEntry = false;
+
+  bool get _isCoordinator => _role == 'coordinator';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await _authService.getRole();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _role = role;
+    });
+  }
 
   @override
   void dispose() {
@@ -202,6 +225,7 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
       earLeft: _mapEarResultToBackend(_earLeftResult!),
       earRight: _mapEarResultToBackend(_earRightResult!),
       notes: _notesController.text.isEmpty ? null : _notesController.text,
+      screeningDate: _isCoordinator ? _selectedDate?.toIso8601String() : null,
     );
   }
 
@@ -212,6 +236,7 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
     _earRightResult = null;
     _manualIdController.clear();
     _notesController.clear();
+    _selectedDate = DateTime.now();
     _showQrScanner = false;
     _showManualEntry = false;
     _isLoading = false;
@@ -253,19 +278,22 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
       }
 
       final screening = _currentScreening();
+      final payload = {
+        'baby_id': screening.babyId,
+        'screening_type': screening.screeningType,
+        'ear_left': screening.earLeft,
+        'ear_right': screening.earRight,
+        'notes': screening.notes,
+        if (_isCoordinator && screening.screeningDate != null)
+          'screening_date': screening.screeningDate,
+      };
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/screenings/'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'baby_id': screening.babyId,
-          'screening_type': screening.screeningType,
-          'ear_left': screening.earLeft,
-          'ear_right': screening.earRight,
-          'notes': screening.notes,
-        }),
+        body: jsonEncode(payload),
       );
 
       if (!mounted) {
@@ -426,6 +454,11 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
             const SizedBox(height: 36),
           ],
 
+          if (_selectedBaby != null && _isCoordinator) ...[
+            _buildDatePicker(),
+            const SizedBox(height: 24),
+          ],
+
           // Ear Results Section
           if (_selectedBaby != null) ...[
             _buildScreeningTypeField(),
@@ -444,6 +477,68 @@ class _ScreeningEntryScreenState extends State<ScreeningEntryScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildDatePicker() {
+    final t = context.watch<LanguageProvider>().text;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.screeningDate,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: _textColor,
+          ),
+        ),
+        const SizedBox(height: 12),
+        InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: _selectedDate ?? DateTime.now(),
+              firstDate: DateTime(2024),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) {
+              setState(() => _selectedDate = picked);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today,
+                  color: _primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _selectedDate == null
+                      ? t.selectDate
+                      : DateFormat('d MMM yyyy').format(_selectedDate!),
+                  style: TextStyle(
+                    color: _selectedDate == null
+                        ? const Color(0xFF999999)
+                        : _textColor,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

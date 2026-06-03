@@ -56,6 +56,7 @@ class ScreeningCreate(BaseModel):
     ear_right: EarResult
     attempt_number: Optional[int] = 1
     notes: Optional[str] = None
+    screening_date: Optional[datetime] = None
 
 class ScreeningOut(BaseModel):
     """Response model for screening record."""

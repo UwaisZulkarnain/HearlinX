@@ -42,6 +42,8 @@ class AppText {
   String get device => isMs ? 'Peranti Digunakan' : 'Device Used';
   String get leftEar => isMs ? 'Telinga Kiri' : 'Left Ear';
   String get rightEar => isMs ? 'Telinga Kanan' : 'Right Ear';
+  String get screeningDate => isMs ? 'Tarikh Saringan' : 'Screening Date';
+  String get selectDate => isMs ? 'Pilih Tarikh' : 'Select Date';
   String get pass => isMs ? 'LULUS' : 'PASS';
   String get refer => isMs ? 'RUJUK' : 'REFER';
   String get notes => isMs ? 'Nota (pilihan)' : 'Notes (optional)';

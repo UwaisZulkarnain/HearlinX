@@ -6,7 +6,7 @@ import uuid
 import json
 
 from auth.models import ScreeningCreate, ScreeningOut, ShiftSummary
-from auth.dependencies import get_current_user, screener_only
+from auth.dependencies import get_current_user, require_role
 from db.database import get_db
 
 router = APIRouter(prefix="/screenings", tags=["screenings"])
@@ -115,12 +115,12 @@ def create_follow_up_for_refer(
 @router.post("/", response_model=ScreeningOut, status_code=status.HTTP_201_CREATED)
 def create_screening(
     screening: ScreeningCreate,
-    current_user: dict = Depends(screener_only),
+    current_user: dict = Depends(require_role("screener", "coordinator")),
     db: Session = Depends(get_db)
 ):
     """
     Create a new screening result.
-    Only screeners can create screenings (role enforced via dependency).
+    Screeners and coordinators can create screenings (role enforced via dependency).
     Automatically writes to audit_logs.
     """
     
@@ -151,7 +151,7 @@ def create_screening(
     db.execute(text("""
         INSERT INTO screenings 
         (id, baby_id, screener_id, hospital_id, screening_type, ear_left, ear_right, attempt_number, notes, screening_date, created_at)
-        VALUES (:id, :baby_id, :screener_id, :hospital_id, :screening_type, :ear_left, :ear_right, :attempt_number, :notes, NOW(), NOW())
+        VALUES (:id, :baby_id, :screener_id, :hospital_id, :screening_type, :ear_left, :ear_right, :attempt_number, :notes, COALESCE(:screening_date, NOW()), NOW())
     """), {
         "id": screening_id,
         "baby_id": str(screening.baby_id),
@@ -161,7 +161,8 @@ def create_screening(
         "ear_left": screening.ear_left.value,
         "ear_right": screening.ear_right.value,
         "attempt_number": screening.attempt_number,
-        "notes": screening.notes
+        "notes": screening.notes,
+        "screening_date": screening.screening_date
     })
     
     # Write to audit log
@@ -172,7 +173,10 @@ def create_screening(
         "ear_left": screening.ear_left.value,
         "ear_right": screening.ear_right.value,
         "attempt_number": screening.attempt_number,
-        "notes": screening.notes
+        "notes": screening.notes,
+        "screening_date": screening.screening_date.isoformat()
+        if screening.screening_date
+        else None
     }
     write_audit_log(db, screener_id, "CREATE", "screenings", screening_id, audit_data)
     create_follow_up_for_refer(db, screening, screening_id, hospital_id, screener_id)
