@@ -8,6 +8,7 @@ import json
 from auth.models import ScreeningCreate, ScreeningOut, ShiftSummary
 from auth.dependencies import get_current_user, require_role
 from db.database import get_db
+from routers.followup_events import write_follow_up_event
 
 router = APIRouter(prefix="/screenings", tags=["screenings"])
 FOLLOW_UP_DUE_DAYS = 14
@@ -85,30 +86,18 @@ def create_follow_up_for_refer(
             "reason": "RUJUK screening result",
         },
     )
-    db.connection().exec_driver_sql(
-        """
-        INSERT INTO follow_up_events (
-            id, follow_up_id, user_id, action, from_status, to_status, notes, metadata, created_at
-        )
-        VALUES (
-            %(id)s, %(follow_up_id)s, %(user_id)s, %(action)s,
-            NULL, %(to_status)s, %(notes)s, CAST(%(metadata)s AS jsonb), NOW()
-        )
-        """,
+    write_follow_up_event(
+        db,
+        follow_up_id,
+        actor_user_id,
+        "created_from_rujuk",
+        None,
+        "pending",
+        "Follow-up created automatically from RUJUK screening",
         {
-            "id": str(uuid.uuid4()),
-            "follow_up_id": follow_up_id,
-            "user_id": actor_user_id,
-            "action": "created_from_rujuk",
-            "to_status": "pending",
-            "notes": "Follow-up created automatically from RUJUK screening",
-            "metadata": json.dumps(
-                {
-                    "screening_id": screening_id,
-                    "baby_id": str(screening.baby_id),
-                    "due_date": str(due_date),
-                }
-            ),
+            "screening_id": screening_id,
+            "baby_id": str(screening.baby_id),
+            "due_date": str(due_date),
         },
     )
 

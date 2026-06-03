@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from auth.dependencies import coordinator_only
 from auth.models import FollowUpEventOut, FollowUpOut, FollowUpUpdate
 from db.database import get_db
+from routers.followup_events import ensure_follow_up_events_table, write_follow_up_event
 
 router = APIRouter(prefix="/followups", tags=["followups"])
 
@@ -66,39 +67,6 @@ def write_audit_log(
     )
 
 
-def write_follow_up_event(
-    db: Session,
-    followup_id: str,
-    user_id: str,
-    action: str,
-    from_status: str | None,
-    to_status: str | None,
-    notes: str | None,
-    metadata: dict | None = None,
-):
-    db.connection().exec_driver_sql(
-        """
-        INSERT INTO follow_up_events (
-            id, follow_up_id, user_id, action, from_status, to_status, notes, metadata, created_at
-        )
-        VALUES (
-            %(id)s, %(follow_up_id)s, %(user_id)s, %(action)s,
-            %(from_status)s, %(to_status)s, %(notes)s, CAST(%(metadata)s AS jsonb), NOW()
-        )
-        """,
-        {
-            "id": str(uuid.uuid4()),
-            "follow_up_id": followup_id,
-            "user_id": user_id,
-            "action": action,
-            "from_status": from_status,
-            "to_status": to_status,
-            "notes": notes,
-            "metadata": json.dumps(metadata or {}),
-        },
-    )
-
-
 @router.get("/", response_model=list[FollowUpOut], tags=["followups"])
 def list_followups(
     current_user: dict = Depends(coordinator_only),
@@ -144,6 +112,7 @@ def list_followup_events(
     if str(followup.hospital_id) != current_user["hospital_id"]:
         raise HTTPException(status_code=403, detail="Cannot view follow-up from another hospital")
 
+    ensure_follow_up_events_table(db)
     return db.execute(
         text(
             """

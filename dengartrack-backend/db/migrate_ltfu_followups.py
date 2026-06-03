@@ -92,7 +92,7 @@ def migrate_ltfu_followups():
             text(
                 """
                 CREATE TABLE IF NOT EXISTS follow_up_events (
-                    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    id UUID PRIMARY KEY,
                     follow_up_id UUID NOT NULL REFERENCES follow_ups(id) ON DELETE CASCADE,
                     user_id UUID REFERENCES users(id),
                     action VARCHAR(100) NOT NULL,
