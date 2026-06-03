@@ -28,6 +28,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
   final _storage = const FlutterSecureStorage();
 
   bool _isLoading = true;
+  bool _showAllHistory = false;
   String? _errorMessage;
   _ShiftSummaryData _summary = const _ShiftSummaryData();
   List<_ScreeningListItem> _screenings = const [];
@@ -51,6 +52,9 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
       }
 
       final headers = {'Authorization': 'Bearer $token'};
+      final listEndpoint = _showAllHistory
+          ? '${ApiConfig.baseUrl}/screenings/'
+          : '${ApiConfig.baseUrl}/screenings/?today=true';
       final responses = await Future.wait([
         http
             .get(
@@ -59,10 +63,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
             )
             .timeout(const Duration(seconds: 15)),
         http
-            .get(
-              Uri.parse('${ApiConfig.baseUrl}/screenings/?today=true'),
-              headers: headers,
-            )
+            .get(Uri.parse(listEndpoint), headers: headers)
             .timeout(const Duration(seconds: 15)),
       ]);
 
@@ -364,27 +365,117 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
               _buildMetricCard('Rujuk', _summary.totalRefer, _dangerColor),
             ],
           ),
+          if (!_showAllHistory) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18C7A5),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _getMotivationalMessage(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF18C7A5),
+              color: Colors.grey[200],
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text(
-              _getMotivationalMessage(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                height: 1.4,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_showAllHistory) {
+                        setState(() => _showAllHistory = false);
+                        _loadData();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: !_showAllHistory
+                            ? Colors.white
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: !_showAllHistory
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        t.today,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: !_showAllHistory
+                              ? const Color(0xFF20323B)
+                              : const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (!_showAllHistory) {
+                        setState(() => _showAllHistory = true);
+                        _loadData();
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _showAllHistory
+                            ? Colors.white
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: _showAllHistory
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        t.allHistory,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _showAllHistory
+                              ? const Color(0xFF20323B)
+                              : const Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 28),
           Text(
-            t.todayScreenings,
+            _showAllHistory ? t.allScreenings : t.todayScreenings,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -416,7 +507,7 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    t.noTodayScreenings,
+                    _showAllHistory ? t.noAllScreenings : t.noTodayScreenings,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 15,
@@ -425,15 +516,16 @@ class _ShiftSummaryScreenState extends State<ShiftSummaryScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    t.restMessage,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF9CA3AF),
+                  if (!_showAllHistory)
+                    Text(
+                      t.restMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF9CA3AF),
+                      ),
                     ),
-                  ),
                 ],
               ),
             )

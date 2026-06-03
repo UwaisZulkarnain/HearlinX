@@ -61,6 +61,11 @@ class AppText {
       isMs ? 'Arahkan kamera ke kod QR' : 'Point camera at QR code';
   String get todayScreenings =>
       isMs ? 'Saringan Hari Ini' : 'Today\'s Screenings';
+  String get today => isMs ? 'Hari Ini' : 'Today';
+  String get allHistory => isMs ? 'Semua Sejarah' : 'All History';
+  String get allScreenings => isMs ? 'Semua Saringan' : 'All Screenings';
+  String get noAllScreenings =>
+      isMs ? 'Tiada saringan direkodkan' : 'No screenings recorded';
   String get noTodayScreenings =>
       isMs ? 'Tiada saringan hari ini' : 'No screenings today';
   String get totalScreenedToday =>
