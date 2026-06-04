@@ -118,12 +118,18 @@ function maskBabyId(value: string) {
   return `****${lastFour}`;
 }
 
-function formatDate(value: string, lang: "en" | "ms") {
-  return new Intl.DateTimeFormat(lang === "ms" ? "ms-MY" : "en-MY", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+function formatDate(value: string, _lang: "en" | "ms") {
+  const date = new Date(value);
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const year = date.getFullYear();
+  let hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const hoursStr = hours.toString().padStart(2, "0");
+  return `${day} ${month} ${year}, ${hoursStr}:${minutes} ${ampm}`;
 }
 
 export default function CoordinatorFollowupsPage() {

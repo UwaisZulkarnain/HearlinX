@@ -20,20 +20,24 @@ void main() async {
   // Initialize API config with smart URL detection
   await ApiConfig.initialize();
 
-  runApp(const HearLinxApp());
+  // Pre-load language before runApp to ensure Malay is set on cold start
+  final languageProvider = LanguageProvider();
+  await languageProvider.loadSavedLocale();
+
+  runApp(HearLinxApp(languageProvider: languageProvider));
 }
 
 class HearLinxApp extends StatelessWidget {
-  const HearLinxApp({super.key});
+  const HearLinxApp({super.key, required this.languageProvider});
+
+  final LanguageProvider languageProvider;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
-        ChangeNotifierProvider<LanguageProvider>(
-          create: (_) => LanguageProvider()..loadSavedLocale(),
-        ),
+        ChangeNotifierProvider<LanguageProvider>.value(value: languageProvider),
       ],
       child: Consumer<LanguageProvider>(
         builder: (context, languageProvider, _) {

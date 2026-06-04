@@ -104,6 +104,10 @@ class AppText {
   String get appointmentDate => isMs ? 'Tarikh Temujanji' : 'Appointment Date';
   String get ltfuReason => isMs ? 'Sebab LTFU' : 'LTFU Reason';
   String get contactAttempts => isMs ? 'Cubaan Hubungan' : 'Contact Attempts';
+  String get connectionError => isMs ? 'Ralat Sambungan' : 'Connection Error';
+  String get checkInternet => isMs
+      ? 'Sila pastikan anda mempunyai sambungan internet dan cuba semula.'
+      : 'Please ensure you have an internet connection and try again.';
   String get close => isMs ? 'Tutup' : 'Close';
   String get monthlyReport => isMs ? 'Laporan Bulanan' : 'Monthly Report';
   String get export => isMs ? 'Eksport' : 'Export';
@@ -129,7 +133,7 @@ class AppText {
       ? 'Sambungan internet tiada. Sila cuba semula.'
       : 'No internet connection. Please try again.';
   String get unknownError => isMs ? 'Ralat tidak diketahui' : 'Unknown error';
-  String get retry => isMs ? 'Cuba semula' : 'Retry';
+  String get retry => isMs ? 'Cuba Semula' : 'Retry';
   String get cancel => isMs ? 'Batal' : 'Cancel';
   String get confirm => isMs ? 'Sahkan' : 'Confirm';
   String get save => isMs ? 'Simpan' : 'Save';

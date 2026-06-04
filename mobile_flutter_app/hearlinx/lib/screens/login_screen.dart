@@ -168,19 +168,44 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       setState(() {
-        _hospitalError = 'Sambungan lambat. Sila cuba semula.';
+        _hospitals = [];
+        _selectedHospitalCode = null;
         _isFetchingHospitals = false;
       });
+      _showConnectionErrorDialog();
     } catch (e) {
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _hospitalError = e.toString().replaceFirst('Exception: ', '');
+        _hospitals = [];
+        _selectedHospitalCode = null;
         _isFetchingHospitals = false;
       });
+      _showConnectionErrorDialog();
     }
+  }
+
+  void _showConnectionErrorDialog() {
+    final t = context.read<LanguageProvider>().text;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(t.connectionError),
+        content: Text(t.checkInternet),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _fetchHospitals();
+            },
+            child: Text(t.retry),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _submitLogin() async {
