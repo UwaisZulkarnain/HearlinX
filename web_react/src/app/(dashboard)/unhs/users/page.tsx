@@ -216,7 +216,7 @@ export default function UnhsUsersPage() {
                   <TableHead>{labels.staffId}</TableHead>
                   <TableHead>{labels.fullName}</TableHead>
                   <TableHead>{labels.hospital}</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("status")}</TableHead>
                   <TableHead className="text-right">{labels.actions}</TableHead>
                 </TableRow>
               </TableHeader>

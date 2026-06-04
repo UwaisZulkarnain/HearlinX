@@ -161,5 +161,8 @@
   "aggregateOnly": "Data agregat sahaja",
   "ministryNotice": "Paparan pemantauan nasional untuk penyeliaan program. Tiada rekod individu bayi atau saringan dipaparkan.",
   "currentReportingMonth": "Bulan laporan semasa",
-  "active": "Aktif"
+  "active": "Aktif",
+  "allScreenings": "Semua Saringan",
+  "searchScreenings": "Cari saringan",
+  "apiError": "Ralat API"
 }

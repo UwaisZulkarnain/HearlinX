@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from sqlalchemy import text
 import os
 
 # Load environment variables
@@ -15,11 +16,27 @@ from routers.reports import router as reports_router
 from routers.screenings import router as screenings_router
 from routers.users import router as users_router
 
+from db.database import engine as db_engine
+
 app = FastAPI(
     title="DengarTrack API", 
     version="1.0.0",
     generate_unique_id_function=lambda route: route.name
 )
+
+
+@app.on_event("startup")
+def fix_followups_null_data():
+    """Set contact_attempts = 0 where NULL to prevent Pydantic validation errors."""
+    try:
+        with db_engine.begin() as conn:
+            conn.execute(text("""
+                UPDATE follow_ups 
+                SET contact_attempts = 0 
+                WHERE contact_attempts IS NULL
+            """))
+    except Exception:
+        pass  # Table may not exist yet on fresh DB
 
 # Add CORS middleware
 app.add_middleware(

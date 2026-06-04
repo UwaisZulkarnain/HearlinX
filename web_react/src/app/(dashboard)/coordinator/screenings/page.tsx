@@ -128,7 +128,7 @@ export default function CoordinatorScreeningsPage() {
                 {t("hospitalCoordinator")}
               </p>
               <h1 className="mt-1 text-2xl font-semibold tracking-normal">
-                Semua Saringan / All Screenings
+                {t("allScreenings")}
               </h1>
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function CoordinatorScreeningsPage() {
           <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-slate-950">
-                Semua Saringan / All Screenings
+                {t("allScreenings")}
               </CardTitle>
               <CardDescription>
                 {filteredScreenings.length.toLocaleString()} /{" "}
@@ -156,7 +156,7 @@ export default function CoordinatorScreeningsPage() {
               <input
                 className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#0F766E] focus:ring-3 focus:ring-[#0F766E]/15"
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={lang === "ms" ? "Cari saringan" : "Search screenings"}
+                placeholder={t("searchScreenings")}
                 value={query}
               />
             </div>

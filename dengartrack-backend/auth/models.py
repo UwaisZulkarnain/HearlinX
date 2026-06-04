@@ -138,7 +138,7 @@ class FollowUpOut(BaseModel):
     appointment_date: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     ltfu_reason: Optional[str] = None
-    contact_attempts: int = 0
+    contact_attempts: Optional[int] = None
     notes: Optional[str]
     urgency: Optional[str] = None
     days_overdue: int = 0

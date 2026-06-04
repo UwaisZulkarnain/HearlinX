@@ -201,7 +201,7 @@ export default function CoordinatorUsersPage() {
                 <TableRow>
                   <TableHead>{labels.staffId}</TableHead>
                   <TableHead>{labels.fullName}</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("status")}</TableHead>
                   <TableHead className="text-right">{labels.actions}</TableHead>
                 </TableRow>
               </TableHeader>

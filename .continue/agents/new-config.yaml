@@ -1,0 +1,67 @@
+{
+  "models": [
+    {
+      "title": "Claude (keep your existing)",
+      "provider": "anthropic",
+      "model": "claude-3-5-sonnet-20241022",
+      "apiKey": "YOUR-CLAUDE-KEY-HERE"
+    },
+    {
+      "title": "Kimi K2.6 (NVIDIA)",
+      "provider": "openai",
+      "model": "moonshotai/kimi-k2.6",
+      "apiBase": "https://integrate.api.nvidia.com/v1",
+      "apiKey": "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"
+    }
+  ],
+  "tabAutocompleteModel": {
+    "title": "Kimi K2.6 Autocomplete",
+    "provider": "openai",
+    "model": "moonshotai/kimi-k2.6",
+    "apiBase": "https://integrate.api.nvidia.com/v1",
+    "apiKey": "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"
+  },
+  "customCommands": [
+    {
+      "name": "test",
+      "prompt": "Write a comprehensive set of unit tests for the selected code. It should setup, run tests that check for correctness including important edge cases, and teardown. Ensure that the tests are complete and sophisticated. Give the tests just as chat output, don't edit any file.",
+      "description": "Write unit tests for highlighted code"
+    }
+  ],
+  "contextProviders": [
+    {
+      "name": "code",
+      "params": {}
+    },
+    {
+      "name": "docs",
+      "params": {}
+    },
+    {
+      "name": "openFiles",
+      "params": {}
+    },
+    {
+      "name": "terminal",
+      "params": {}
+    }
+  ],
+  "slashCommands": [
+    {
+      "name": "edit",
+      "description": "Edit selected code"
+    },
+    {
+      "name": "comment",
+      "description": "Write comments for the selected code"
+    },
+    {
+      "name": "share",
+      "description": "Export this session as a markdown file"
+    },
+    {
+      "name": "cmd",
+      "description": "Generate a shell command"
+    }
+  ]
+}

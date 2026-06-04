@@ -161,5 +161,8 @@
   "aggregateOnly": "Aggregate data only",
   "ministryNotice": "National monitoring view for programme oversight. No individual baby or screening records are shown.",
   "currentReportingMonth": "Current reporting month",
-  "active": "Active"
+  "active": "Active",
+  "allScreenings": "All Screenings",
+  "searchScreenings": "Search screenings",
+  "apiError": "API Error"
 }
