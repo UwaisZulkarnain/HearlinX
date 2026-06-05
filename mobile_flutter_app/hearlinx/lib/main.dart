@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 import 'config/api_config.dart';
 import 'providers/auth_provider.dart';
@@ -23,6 +26,27 @@ void main() async {
   // Pre-load language before runApp to ensure Malay is set on cold start
   final languageProvider = LanguageProvider();
   await languageProvider.loadSavedLocale();
+
+  // Shorebird: silently check for and download patches on startup
+  try {
+    final shorebird = ShorebirdCodePush();
+    final isUpdateAvailable = await shorebird.isNewPatchAvailableForDownload();
+    if (isUpdateAvailable) {
+      await shorebird.downloadUpdateIfAvailable();
+
+      // Track patch application for login screen banner
+      final prefs = await SharedPreferences.getInstance();
+      final currentPatch = await shorebird.currentPatchNumber();
+      final previousPatch = prefs.getInt('last_seen_patch');
+
+      if (currentPatch != null && currentPatch != previousPatch) {
+        await prefs.setInt('last_seen_patch', currentPatch);
+        await prefs.setBool('patch_just_applied', true);
+      }
+    }
+  } catch (_) {
+    // Shorebird not available in debug mode or on first install — ignore silently
+  }
 
   runApp(HearLinxApp(languageProvider: languageProvider));
 }

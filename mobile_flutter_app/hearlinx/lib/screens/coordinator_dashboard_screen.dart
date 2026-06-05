@@ -155,6 +155,16 @@ class _CoordinatorDashboardScreenState
         _followUps = followUpJson
             .map((item) => _FollowUpItem.fromJson(item as Map<String, dynamic>))
             .toList();
+        _followUps.sort((a, b) {
+          final urgencyOrder = {'ltfu': 0, 'red': 1, 'amber': 2, 'new': 3};
+          final orderA = urgencyOrder[a.urgency] ?? 99;
+          final orderB = urgencyOrder[b.urgency] ?? 99;
+          if (orderA != orderB) return orderA.compareTo(orderB);
+          if (a.dueDate != null && b.dueDate != null) {
+            return a.dueDate!.compareTo(b.dueDate!);
+          }
+          return 0;
+        });
         _screenings = screeningJson
             .map(
               (item) =>
@@ -902,83 +912,81 @@ class _CoordinatorDashboardScreenState
           ),
           const SizedBox(height: 18),
           _sectionCard(
-            title: t.followupQueue,
+            titleWidget: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    t.followupQueue,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppStyles.textPrimary,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppStyles.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${_followUps.length}',
+                    style: const TextStyle(
+                      color: AppStyles.accent,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             child: _followUps.isEmpty
                 ? Text(
                     t.noPendingFollowups,
                     style: const TextStyle(color: AppStyles.textSecondary),
                   )
                 : Column(
-                    children: _followUps.take(4).map((item) {
-                      final dueText = item.dueDate == null
-                          ? t.noDueDate
-                          : DateFormat('d MMM yyyy').format(item.dueDate!);
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        onTap: () => _showFollowUpDetails(item),
-                        title: Text(
-                          item.babySystemId,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                            letterSpacing: 0.5,
+                    children: [
+                      ..._followUps
+                          .take(5)
+                          .map((item) => _buildCompactFollowUpRow(item, t)),
+                      if (_followUps.length > 5)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(
+                                  context,
+                                ).pushNamed('/coordinator/followups');
+                              },
+                              icon: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 18,
+                              ),
+                              label: Text(
+                                '${t.viewAll} (${_followUps.length - 5} ${t.more})',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppStyles.accent,
+                                side: const BorderSide(color: AppStyles.accent),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text('${t.dateLabel}: $dueText'),
-                                _urgencyBadge(item, t),
-                                Text('${t.statusLabel}: ${item.status}'),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _followUpActionButton(
-                                  t.markContacted,
-                                  item.id,
-                                  'contacted',
-                                  outlineColor: const Color(0xFF18C7A5),
-                                ),
-                                _followUpActionButton(
-                                  t.bookAppointment,
-                                  item.id,
-                                  'appointment_booked',
-                                  outlineColor: const Color(0xFF2563EB),
-                                ),
-                                _followUpActionButton(
-                                  t.escalate,
-                                  item.id,
-                                  'escalated',
-                                  outlineColor: const Color(0xFFEA580C),
-                                ),
-                                _followUpActionButton(
-                                  t.complete,
-                                  item.id,
-                                  'completed',
-                                  outlineColor: AppStyles.success,
-                                ),
-                                _followUpActionButton(
-                                  t.markLtfu,
-                                  item.id,
-                                  'lost_to_followup',
-                                  outlineColor: AppStyles.warning,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
+                    ],
                   ),
           ),
           const SizedBox(height: 18),
@@ -1351,6 +1359,97 @@ class _CoordinatorDashboardScreenState
           color: color,
           fontSize: 11,
           fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactFollowUpRow(_FollowUpItem item, AppText t) {
+    final (urgencyLabel, urgencyColor) = switch (item.urgency) {
+      'ltfu' => (t.ltfu, AppStyles.warning),
+      'red' => (t.redRisk, AppStyles.danger),
+      'amber' => (
+        item.daysOverdue > 0 ? '${t.overdue} ${item.daysOverdue}h' : t.overdue,
+        const Color(0xFFEA580C),
+      ),
+      _ => (t.newFollowup, AppStyles.accent),
+    };
+
+    final dueText = item.dueDate == null
+        ? t.noDueDate
+        : DateFormat('d MMM').format(item.dueDate!);
+
+    return InkWell(
+      onTap: () => _showFollowUpDetails(item),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: urgencyColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: urgencyColor.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: urgencyColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.babySystemId,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$dueText · $urgencyLabel',
+                    style: TextStyle(
+                      color: AppStyles.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: urgencyColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                item.status,
+                style: TextStyle(
+                  color: urgencyColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppStyles.textSecondary,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );

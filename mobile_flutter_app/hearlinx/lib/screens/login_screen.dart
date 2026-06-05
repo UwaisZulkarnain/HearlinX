@@ -5,10 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 import '../config/api_config.dart';
 import '../providers/language_provider.dart';
 import '../services/auth_service.dart';
+import '../ui/app_styles.dart';
 
 class _HospitalOption {
   static final Map<String, String> _hospitalShortNames = {
@@ -64,11 +67,36 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isFetchingHospitals = true;
   bool _isLoading = false;
   String? _hospitalError;
+  int? _currentPatch;
+  bool _showPatchBanner = false;
 
   @override
   void initState() {
     super.initState();
     _fetchHospitals();
+    _checkPatchStatus();
+  }
+
+  Future<void> _checkPatchStatus() async {
+    try {
+      final shorebird = ShorebirdCodePush();
+      final patch = await shorebird.currentPatchNumber();
+      final prefs = await SharedPreferences.getInstance();
+      final justApplied = prefs.getBool('patch_just_applied') ?? false;
+
+      if (mounted) {
+        setState(() {
+          _currentPatch = patch;
+          _showPatchBanner = justApplied;
+        });
+      }
+
+      if (justApplied) {
+        await prefs.setBool('patch_just_applied', false);
+      }
+    } catch (_) {
+      // Shorebird not available in debug mode — ignore
+    }
   }
 
   @override
@@ -301,6 +329,34 @@ class _LoginScreenState extends State<LoginScreen> {
                       backgroundColor: Colors.transparent,
                       valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
                     ),
+                  // Snackbar trigger for newly applied patches
+                  Builder(
+                    builder: (context) {
+                      if (_showPatchBanner && _currentPatch != null) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${t.updateApplied} · ${t.patchLabel} $_currentPatch',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                backgroundColor: AppStyles.success,
+                                duration: const Duration(seconds: 3),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            );
+                          }
+                        });
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                   SafeArea(
                     child: Center(
                       child: Padding(
@@ -604,6 +660,53 @@ class _LoginScreenState extends State<LoginScreen> {
                                         decoration: TextDecoration.underline,
                                         decorationColor: _accentColor,
                                       ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 24,
+                                      bottom: 8,
+                                      left: 4,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppStyles.textSecondary
+                                                .withValues(alpha: 0.08),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle_rounded,
+                                                size: 12,
+                                                color: AppStyles.success,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                '${t.appVersion} · ${t.patchLabel} ${_currentPatch ?? 0} · ${t.versionUpToDate}',
+                                                style: TextStyle(
+                                                  color:
+                                                      AppStyles.textSecondary,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

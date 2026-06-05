@@ -22,14 +22,16 @@ class AppText {
       : 'Forgot PIN?\nContact Coordinator';
   String get contactCoordinator =>
       isMs ? 'Hubungi Penyelaras' : 'Contact Coordinator';
-  String get forgotPinContactName => 'Siti Aminah Kamaludin (Mak Uda)';
+  String get forgotPinContactName =>
+      isMs ? 'Penyelaras Program' : 'Program Coordinator';
   String get forgotPinContactPhone =>
-      isMs ? 'Telefon: +6012-345-6789' : 'Phone: +6012-345-6789';
+      isMs ? 'Tel: +60 XX-XXXX XXXX' : 'Tel: +60 XX-XXXX XXXX';
   String get forgotPinContactEmail => isMs
-      ? 'Emel: p153232@siswa.ukm.edu.my'
-      : 'Email: p153232@siswa.ukm.edu.my';
-  String get forgotPinContactOffice =>
-      'Pejabat: iCaRehab, Fakulti Sains Kesihatan, UKM';
+      ? 'Emel: coordinator@hospital.gov.my'
+      : 'Email: coordinator@hospital.gov.my';
+  String get forgotPinContactOffice => isMs
+      ? 'Pejabat: Unit Audiologi, Hospital'
+      : 'Office: Audiology Unit, Hospital';
   String get appSubtitle => isMs
       ? 'Sistem Pengurusan Saringan Pendengaran Bayi'
       : 'Newborn Hearing Screening Management System';
@@ -203,4 +205,11 @@ class AppText {
   String get totalBabiesRegistered =>
       isMs ? 'Jumlah Bayi Terdaftar' : 'Total Babies Registered';
   String get lastUpdated => isMs ? 'Dikemas kini terakhir' : 'Last updated';
+  String get viewAll => isMs ? 'Lihat Semua' : 'View All';
+  String get more => isMs ? 'lagi' : 'more';
+  String get versionUpToDate => isMs ? 'Versi terkini' : 'Up to date';
+  String get updateApplied =>
+      isMs ? 'Aplikasi telah dikemaskini' : 'Update applied';
+  String get patchLabel => isMs ? 'Tampalan' : 'Patch';
+  String get appVersion => 'v1.0.0';
 }
