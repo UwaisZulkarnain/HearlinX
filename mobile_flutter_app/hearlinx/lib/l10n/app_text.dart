@@ -23,15 +23,14 @@ class AppText {
   String get contactCoordinator =>
       isMs ? 'Hubungi Penyelaras' : 'Contact Coordinator';
   String get forgotPinContactName =>
-      isMs ? 'Penyelaras Program' : 'Program Coordinator';
+      isMs ? 'Dr. Siti Aminah Kamaludin' : 'Dr. Siti Aminah Kamaludin';
   String get forgotPinContactPhone =>
-      isMs ? 'Tel: +60 XX-XXXX XXXX' : 'Tel: +60 XX-XXXX XXXX';
-  String get forgotPinContactEmail => isMs
-      ? 'Emel: coordinator@hospital.gov.my'
-      : 'Email: coordinator@hospital.gov.my';
+      isMs ? 'Tel: +60 12-204 8848' : 'Tel: +60 12-204 8848';
+  String get forgotPinContactEmail =>
+      isMs ? 'Emel: sitiaminah@email.com' : 'Email: sitiaminah@email.com';
   String get forgotPinContactOffice => isMs
-      ? 'Pejabat: Unit Audiologi, Hospital'
-      : 'Office: Audiology Unit, Hospital';
+      ? 'Pejabat: Unit Audiologi, Hospital Kuala Lumpur'
+      : 'Office: Audiology Unit, Hospital Kuala Lumpur';
   String get appSubtitle => isMs
       ? 'Sistem Pengurusan Saringan Pendengaran Bayi'
       : 'Newborn Hearing Screening Management System';
@@ -212,4 +211,61 @@ class AppText {
       isMs ? 'Aplikasi telah dikemaskini' : 'Update applied';
   String get patchLabel => isMs ? 'Tampalan' : 'Patch';
   String get appVersion => 'v1.0.0';
+
+  // Follow-up status translations
+  String get statusPending => isMs ? 'Belum Selesai' : 'Pending';
+  String get statusContacted => isMs ? 'Dihubungi' : 'Contacted';
+  String get statusAppointmentBooked =>
+      isMs ? 'Temujanji Ditetapkan' : 'Appointment Booked';
+  String get statusEscalated => isMs ? 'Dinaik Taraf' : 'Escalated';
+  String get statusCompleted => isMs ? 'Selesai' : 'Completed';
+  String get statusLostToFollowup =>
+      isMs ? 'Hilang Susulan' : 'Lost to Follow-up';
+  String get statusClosed => isMs ? 'Ditutup' : 'Closed';
+
+  // Timeline action translations
+  String get actionCreatedFromRujuk =>
+      isMs ? 'Dicipta dari saringan RUJUK' : 'Created from RUJUK screening';
+  String get actionStatusChanged => isMs ? 'Status ditukar' : 'Status changed';
+  String get actionContactAttempt =>
+      isMs ? 'Cubaan hubungan' : 'Contact attempt';
+  String get actionNoteAdded => isMs ? 'Nota ditambah' : 'Note added';
+  String get actionAppointmentBooked =>
+      isMs ? 'Temujanji ditetapkan' : 'Appointment booked';
+  String get actionEscalated => isMs ? 'Kes dinaik taraf' : 'Case escalated';
+  String get actionMarkedLtfu => isMs ? 'Tanda hilang susulan' : 'Marked LTFU';
+  String get actionCompleted => isMs ? 'Kes selesai' : 'Case completed';
+
+  // Status transition helper
+  String get statusTo => isMs ? 'kepada' : 'to';
+
+  // Follow-up detail modal labels
+  String get followUpDetailTitle =>
+      isMs ? 'Butiran Susulan' : 'Follow-up Details';
+  String get babyIdLabel => isMs ? 'ID Bayi' : 'Baby ID';
+  String get appointmentDateHint =>
+      isMs ? 'TTTT-BB-HH JJ:mm' : 'yyyy-MM-dd HH:mm';
+  String get ltfuReasonLabel => isMs ? 'Sebab Hilang Susulan' : 'LTFU Reason';
+  String get ltfuReasonHint => isMs ? 'Nyatakan sebab...' : 'Enter reason...';
+  String get notesOptionalLabel => isMs ? 'Nota (pilihan)' : 'Notes (optional)';
+  String get notesHint => isMs ? 'Tambah nota...' : 'Add notes...';
+  String get contactAttemptsLabel =>
+      isMs ? 'Cubaan Hubungan' : 'Contact Attempts';
+  String get timelineTitle => isMs ? 'Garis Masa' : 'Timeline';
+  String get saveChanges => isMs ? 'Simpan Perubahan' : 'Save Changes';
+  String get tapToViewDetails =>
+      isMs ? 'Ketik untuk butiran' : 'Tap for details';
+
+  // Follow-up list page
+  String get allFollowUpsTitle => isMs ? 'Senarai Susulan' : 'Follow-up List';
+  String get searchByBabyId => isMs ? 'Cari ID Bayi...' : 'Search baby ID...';
+  String get filterAll => isMs ? 'Semua' : 'All';
+  String get filterLtfu => 'LTFU';
+  String get filterRed => isMs ? 'Merah' : 'Red';
+  String get filterAmber => isMs ? 'Oren' : 'Amber';
+  String get filterNew => isMs ? 'Baharu' : 'New';
+  String get noFollowUpsFound =>
+      isMs ? 'Tiada susulan dijumpai' : 'No follow-ups found';
+  String get dueDateLabel => isMs ? 'Tarikh Akhir' : 'Due Date';
+  String get daysOverdueText => isMs ? 'hari lewat' : 'days overdue';
 }

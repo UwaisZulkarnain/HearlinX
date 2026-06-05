@@ -10,6 +10,7 @@ import 'config/api_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/language_provider.dart';
 import 'screens/coordinator_dashboard_screen.dart';
+import 'screens/followup_list_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/moh_dashboard_screen.dart';
@@ -86,6 +87,7 @@ class HearLinxApp extends StatelessWidget {
               '/home': (_) => const HomeScreen(),
               '/coordinator-dashboard': (_) =>
                   const CoordinatorDashboardScreen(),
+              '/coordinator/followups': (_) => const FollowUpListScreen(),
               '/unhs-dashboard': (_) => const UnhsDashboardScreen(),
               '/moh-dashboard': (_) => const MohDashboardScreen(),
               '/screening-entry': (_) => const ScreeningEntryScreen(),

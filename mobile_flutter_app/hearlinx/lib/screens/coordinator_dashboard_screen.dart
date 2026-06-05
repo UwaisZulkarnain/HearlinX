@@ -1164,157 +1164,525 @@ class _CoordinatorDashboardScreenState
     try {
       final events = await _fetchFollowUpEvents(item.id);
       if (!mounted) return;
+
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         builder: (context) {
           return StatefulBuilder(
             builder: (context, setModalState) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: 18,
-                  right: 18,
-                  top: 18,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 18,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(t.followupDetails, style: AppStyles.headingStyle),
-                      const SizedBox(height: 6),
-                      Text(
-                        item.babySystemId,
-                        style: const TextStyle(fontFamily: 'monospace'),
-                      ),
-                      const SizedBox(height: 14),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedStatus,
-                        decoration: InputDecoration(labelText: t.status),
-                        items:
-                            const [
-                              'pending',
-                              'contacted',
-                              'appointment_booked',
-                              'escalated',
-                              'completed',
-                              'lost_to_followup',
-                              'closed',
-                            ].map((status) {
-                              return DropdownMenuItem(
-                                value: status,
-                                child: Text(status),
-                              );
-                            }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setModalState(() => selectedStatus = value);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: appointmentController,
-                        decoration: InputDecoration(
-                          labelText: t.appointmentDate,
-                          hintText: 'yyyy-MM-dd HH:mm',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: reasonController,
-                        decoration: InputDecoration(labelText: t.ltfuReason),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: InputDecoration(labelText: t.notes),
-                      ),
-                      const SizedBox(height: 10),
-                      Text('${t.contactAttempts}: ${item.contactAttempts}'),
-                      const SizedBox(height: 16),
-                      Text(
-                        t.timeline,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 8),
-                      if (events.isEmpty)
-                        Text(
-                          t.noTimelineEvents,
-                          style: const TextStyle(
-                            color: AppStyles.textSecondary,
+              return DraggableScrollableSheet(
+                initialChildSize: 0.85,
+                minChildSize: 0.5,
+                maxChildSize: 0.95,
+                expand: false,
+                builder: (context, scrollController) {
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    child: ListView(
+                      controller: scrollController,
+                      children: [
+                        // Drag handle
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                        )
-                      else
-                        ...events.map(
-                          (event) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                            title: Text(
-                              event.action,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Title
+                        Text(
+                          t.followUpDetailTitle,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppStyles.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Baby ID card
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppStyles.accent.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppStyles.accent.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppStyles.accent.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.child_care_rounded,
+                                  color: AppStyles.accent,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t.babyIdLabel,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppStyles.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.babySystemId,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      fontFamily: 'monospace',
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Status section
+                        Text(
+                          t.statusLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppStyles.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey[200]!),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: selectedStatus,
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                              ),
+                              items:
+                                  [
+                                    ('pending', t.statusPending),
+                                    ('contacted', t.statusContacted),
+                                    (
+                                      'appointment_booked',
+                                      t.statusAppointmentBooked,
+                                    ),
+                                    ('escalated', t.statusEscalated),
+                                    ('completed', t.statusCompleted),
+                                    (
+                                      'lost_to_followup',
+                                      t.statusLostToFollowup,
+                                    ),
+                                    ('closed', t.statusClosed),
+                                  ].map((item) {
+                                    final (value, label) = item;
+                                    return DropdownMenuItem(
+                                      value: value,
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setModalState(() => selectedStatus = value);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Appointment date
+                        Text(
+                          t.appointmentDate,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppStyles.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: appointmentController,
+                          decoration: InputDecoration(
+                            hintText: t.appointmentDateHint,
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[200]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[200]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppStyles.accent,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // LTFU Reason
+                        Text(
+                          t.ltfuReasonLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppStyles.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: reasonController,
+                          decoration: InputDecoration(
+                            hintText: t.ltfuReasonHint,
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[200]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[200]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppStyles.accent,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Notes
+                        Text(
+                          t.notesOptionalLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppStyles.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: notesController,
+                          minLines: 3,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            hintText: t.notesHint,
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[200]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.grey[200]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppStyles.accent,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.all(14),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Contact attempts badge
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.phone_rounded,
+                                size: 18,
+                                color: Colors.blue[600],
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                '${t.contactAttemptsLabel}: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue[800],
+                                ),
+                              ),
+                              Text(
+                                '${item.contactAttempts}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blue[800],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Timeline header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              t.timelineTitle,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppStyles.textPrimary,
+                              ),
+                            ),
+                            if (events.isNotEmpty)
+                              Text(
+                                '${events.length} ${t.timelineTitle.toLowerCase()}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppStyles.textSecondary,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        if (events.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 18,
+                                  color: AppStyles.textSecondary,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  t.noTimelineEvents,
+                                  style: TextStyle(
+                                    color: AppStyles.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...events.map((event) {
+                            final urgencyColor = switch (event.action) {
+                              'created_from_rujuk' => AppStyles.accent,
+                              'status_changed' => Colors.blue,
+                              'contact_attempt' => Colors.orange,
+                              'escalated' => AppStyles.danger,
+                              'completed' => AppStyles.success,
+                              _ => AppStyles.textSecondary,
+                            };
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.grey[200]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: urgencyColor,
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          _translateTimelineAction(
+                                            event.action,
+                                            t,
+                                          ),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat(
+                                          'd MMM',
+                                        ).format(event.createdAt.toLocal()),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppStyles.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (event.fromStatus != null ||
+                                      event.toStatus != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 18),
+                                      child: Text(
+                                        '${_translateStatus(event.fromStatus ?? '-', t)} ${t.statusTo} ${_translateStatus(event.toStatus ?? '-', t)}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppStyles.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  if ((event.notes ?? '').isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 18,
+                                        top: 4,
+                                      ),
+                                      child: Text(
+                                        event.notes!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppStyles.textSecondary,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 18),
+                                    child: Text(
+                                      DateFormat(
+                                        'hh:mm a',
+                                      ).format(event.createdAt.toLocal()),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppStyles.textSecondary
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+
+                        const SizedBox(height: 24),
+
+                        // Save button
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () async {
+                              final payload = <String, dynamic>{
+                                'status': selectedStatus,
+                                'notes': notesController.text.trim().isEmpty
+                                    ? null
+                                    : notesController.text.trim(),
+                                'ltfu_reason':
+                                    reasonController.text.trim().isEmpty
+                                    ? null
+                                    : reasonController.text.trim(),
+                              };
+                              final appointmentText = appointmentController.text
+                                  .trim();
+                              if (appointmentText.isNotEmpty) {
+                                payload['appointment_date'] = DateTime.parse(
+                                  appointmentText,
+                                ).toIso8601String();
+                              }
+                              Navigator.of(context).pop();
+                              await _patchFollowUp(item.id, payload);
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppStyles.accent,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              t.saveChanges,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            subtitle: Text(
-                              [
-                                if (event.fromStatus != null ||
-                                    event.toStatus != null)
-                                  '${event.fromStatus ?? '-'} -> ${event.toStatus ?? '-'}',
-                                if ((event.notes ?? '').isNotEmpty)
-                                  event.notes!,
-                              ].join('\n'),
-                            ),
-                            trailing: Text(
-                              DateFormat(
-                                'd MMM\nhh:mm a',
-                              ).format(event.createdAt.toLocal()),
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppStyles.textSecondary,
+                                fontSize: 15,
                               ),
                             ),
                           ),
                         ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () async {
-                            final payload = <String, dynamic>{
-                              'status': selectedStatus,
-                              'notes': notesController.text.trim().isEmpty
-                                  ? null
-                                  : notesController.text.trim(),
-                              'ltfu_reason':
-                                  reasonController.text.trim().isEmpty
-                                  ? null
-                                  : reasonController.text.trim(),
-                            };
-                            final appointmentText = appointmentController.text
-                                .trim();
-                            if (appointmentText.isNotEmpty) {
-                              payload['appointment_date'] = DateTime.parse(
-                                appointmentText,
-                              ).toIso8601String();
-                            }
-                            Navigator.of(context).pop();
-                            await _patchFollowUp(item.id, payload);
-                          },
-                          child: Text(t.save),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           );
@@ -1333,6 +1701,33 @@ class _CoordinatorDashboardScreenState
       reasonController.dispose();
       appointmentController.dispose();
     }
+  }
+
+  String _translateStatus(String status, AppText t) {
+    return switch (status) {
+      'pending' => t.statusPending,
+      'contacted' => t.statusContacted,
+      'appointment_booked' => t.statusAppointmentBooked,
+      'escalated' => t.statusEscalated,
+      'completed' => t.statusCompleted,
+      'lost_to_followup' => t.statusLostToFollowup,
+      'closed' => t.statusClosed,
+      _ => status,
+    };
+  }
+
+  String _translateTimelineAction(String action, AppText t) {
+    return switch (action) {
+      'created_from_rujuk' => t.actionCreatedFromRujuk,
+      'status_changed' => t.actionStatusChanged,
+      'contact_attempt' => t.actionContactAttempt,
+      'note_added' => t.actionNoteAdded,
+      'appointment_booked' => t.actionAppointmentBooked,
+      'escalated' => t.actionEscalated,
+      'marked_ltfu' => t.actionMarkedLtfu,
+      'completed' => t.actionCompleted,
+      _ => action,
+    };
   }
 
   Widget _urgencyBadge(_FollowUpItem item, AppText t) {
@@ -1435,7 +1830,7 @@ class _CoordinatorDashboardScreenState
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                item.status,
+                _translateStatus(item.status, t),
                 style: TextStyle(
                   color: urgencyColor,
                   fontSize: 11,
