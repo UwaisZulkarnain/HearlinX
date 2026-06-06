@@ -244,7 +244,7 @@ class AppText {
       isMs ? 'Butiran Susulan' : 'Follow-up Details';
   String get babyIdLabel => isMs ? 'ID Bayi' : 'Baby ID';
   String get appointmentDateHint =>
-      isMs ? 'TTTT-BB-HH JJ:mm' : 'yyyy-MM-dd HH:mm';
+      isMs ? 'Pilih tarikh & masa' : 'Select date & time';
   String get ltfuReasonLabel => isMs ? 'Sebab Hilang Susulan' : 'LTFU Reason';
   String get ltfuReasonHint => isMs ? 'Nyatakan sebab...' : 'Enter reason...';
   String get notesOptionalLabel => isMs ? 'Nota (pilihan)' : 'Notes (optional)';
@@ -301,4 +301,23 @@ class AppText {
   String get actionQuickCompleted =>
       isMs ? 'Selesai pantas' : 'Quick completed';
   String get actionQuickLtfu => isMs ? 'LTFU pantas' : 'Quick LTFU';
+
+  // Appointment booking dialog
+  String get bookAppointmentTitle =>
+      isMs ? 'Tetapkan Temujanji' : 'Book Appointment';
+  String get appointmentDateLabel =>
+      isMs ? 'Tarikh & Masa Temujanji' : 'Appointment Date & Time';
+  String get confirmAppointment =>
+      isMs ? 'Sahkan Temujanji' : 'Confirm Appointment';
+  String get invalidDateFormat =>
+      isMs ? 'Format tarikh tidak sah' : 'Invalid date format';
+
+  // Escalation dialog
+  String get escalateTitle => isMs ? 'Naik Taraf Kes' : 'Escalate Case';
+  String get escalationReasonLabel =>
+      isMs ? 'Sebab Pennaikan Taraf' : 'Escalation Reason';
+  String get escalationReasonHint =>
+      isMs ? 'Nyatakan sebab...' : 'Enter reason...';
+  String get confirmEscalation =>
+      isMs ? 'Sahkan Eskalasi' : 'Confirm Escalation';
 }

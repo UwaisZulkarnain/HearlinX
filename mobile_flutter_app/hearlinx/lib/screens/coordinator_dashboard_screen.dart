@@ -1225,6 +1225,260 @@ class _CoordinatorDashboardScreenState
     }
   }
 
+  Future<void> _showAppointmentDialog(String id) async {
+    final t = context.read<LanguageProvider>().text;
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(t.bookAppointmentTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.appointmentDateLabel),
+                  const SizedBox(height: 16),
+
+                  // Date picker button
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: ColorScheme.light(
+                                primary: AppStyles.accent,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 18,
+                            color: AppStyles.accent,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            selectedDate == null
+                                ? (t.isMs ? 'Pilih tarikh' : 'Pick date')
+                                : DateFormat(
+                                    'd MMM yyyy',
+                                  ).format(selectedDate!),
+                            style: TextStyle(
+                              color: selectedDate == null
+                                  ? Colors.grey[500]
+                                  : AppStyles.textPrimary,
+                              fontWeight: selectedDate == null
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Time picker button
+                  InkWell(
+                    onTap: selectedDate == null
+                        ? null
+                        : () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay.now(),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: ColorScheme.light(
+                                      primary: AppStyles.accent,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (picked != null) {
+                              setDialogState(() => selectedTime = picked);
+                            }
+                          },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: selectedDate == null
+                              ? Colors.grey[200]!
+                              : Colors.grey[300]!,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        color: selectedDate == null ? Colors.grey[50] : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            size: 18,
+                            color: selectedDate == null
+                                ? Colors.grey[300]
+                                : AppStyles.accent,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            selectedTime == null
+                                ? (t.isMs ? 'Pilih masa' : 'Pick time')
+                                : selectedTime!.format(context),
+                            style: TextStyle(
+                              color: selectedTime == null
+                                  ? (selectedDate == null
+                                        ? Colors.grey[300]
+                                        : Colors.grey[500])
+                                  : AppStyles.textPrimary,
+                              fontWeight: selectedTime == null
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  if (selectedDate != null && selectedTime != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        '${DateFormat('d MMM yyyy').format(selectedDate!)} · ${selectedTime!.format(context)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppStyles.accent,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(t.cancel),
+                ),
+                FilledButton(
+                  onPressed: (selectedDate != null && selectedTime != null)
+                      ? () => Navigator.of(context).pop(true)
+                      : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppStyles.accent,
+                  ),
+                  child: Text(t.confirmAppointment),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == true && selectedDate != null && selectedTime != null) {
+      final dateTime = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        selectedTime!.hour,
+        selectedTime!.minute,
+      );
+
+      await _patchFollowUp(id, {
+        'status': 'appointment_booked',
+        'appointment_date': dateTime.toIso8601String(),
+      });
+    }
+  }
+
+  Future<void> _showEscalationDialog(String id) async {
+    final t = context.read<LanguageProvider>().text;
+    final controller = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.escalateTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(t.escalationReasonLabel),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: t.escalationReasonHint,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(t.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppStyles.accent),
+            child: Text(t.confirmEscalation),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await _patchFollowUp(id, {
+        'status': 'escalated',
+        'notes': controller.text.trim().isEmpty ? null : controller.text.trim(),
+      });
+    }
+
+    controller.dispose();
+  }
+
   Future<void> _showFollowUpDetails(_FollowUpItem item) async {
     final t = context.read<LanguageProvider>().text;
     final notesController = TextEditingController(text: item.notes ?? '');
@@ -1947,21 +2201,12 @@ class _CoordinatorDashboardScreenState
                 ),
                 _miniActionButton(
                   t.bookAppointment,
-                  () => _quickAction(
-                    item.id,
-                    'appointment_booked',
-                    t.appointmentBooked,
-                  ),
+                  () => _showAppointmentDialog(item.id),
                   Colors.blue,
                 ),
                 _miniActionButton(
                   t.escalate,
-                  () => _confirmAndQuickAction(
-                    item.id,
-                    'escalated',
-                    t.confirmEscalate,
-                    t.caseEscalated,
-                  ),
+                  () => _showEscalationDialog(item.id),
                   Colors.orange,
                 ),
                 _miniActionButton(
