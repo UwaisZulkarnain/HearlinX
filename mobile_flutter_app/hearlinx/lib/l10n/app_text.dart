@@ -252,6 +252,7 @@ class AppText {
   String get contactAttemptsLabel =>
       isMs ? 'Cubaan Hubungan' : 'Contact Attempts';
   String get timelineTitle => isMs ? 'Garis Masa' : 'Timeline';
+  String get timelineCount => isMs ? 'aktiviti' : 'events';
   String get saveChanges => isMs ? 'Simpan Perubahan' : 'Save Changes';
   String get tapToViewDetails =>
       isMs ? 'Ketik untuk butiran' : 'Tap for details';
@@ -268,4 +269,36 @@ class AppText {
       isMs ? 'Tiada susulan dijumpai' : 'No follow-ups found';
   String get dueDateLabel => isMs ? 'Tarikh Akhir' : 'Due Date';
   String get daysOverdueText => isMs ? 'hari lewat' : 'days overdue';
+
+  // Confirmation dialogs
+  String get confirmAction => isMs ? 'Sahkan Tindakan' : 'Confirm Action';
+  String get confirmMarkLtfu => isMs
+      ? 'Tanda bayi ini sebagai Hilang Susulan (LTFU)?'
+      : 'Mark this baby as Lost to Follow-up (LTFU)?';
+  String get confirmComplete =>
+      isMs ? 'Tanda kes ini sebagai Selesai?' : 'Mark this case as Completed?';
+  String get confirmEscalate => isMs
+      ? 'Naik taraf kes ini kepada penyelia?'
+      : 'Escalate this case to supervisor?';
+  String get yes => isMs ? 'Ya' : 'Yes';
+  String get no => isMs ? 'Tidak' : 'No';
+
+  // Quick action success messages
+  String get markedAsContacted => isMs ? 'Dihubungi' : 'Marked as Contacted';
+  String get appointmentBooked =>
+      isMs ? 'Temujanji Ditetapkan' : 'Appointment Booked';
+  String get caseEscalated => isMs ? 'Kes Dinaik Taraf' : 'Case Escalated';
+  String get caseCompleted => isMs ? 'Kes Selesai' : 'Case Completed';
+  String get caseMarkedLtfu => isMs ? 'Hilang Susulan' : 'Lost to Follow-up';
+
+  // Timeline quick action names
+  String get actionQuickContacted =>
+      isMs ? 'Dihubungi secara pantas' : 'Quick contacted';
+  String get actionQuickAppointment =>
+      isMs ? 'Temujanji pantas' : 'Quick appointment';
+  String get actionQuickEscalated =>
+      isMs ? 'Naik taraf pantas' : 'Quick escalated';
+  String get actionQuickCompleted =>
+      isMs ? 'Selesai pantas' : 'Quick completed';
+  String get actionQuickLtfu => isMs ? 'LTFU pantas' : 'Quick LTFU';
 }

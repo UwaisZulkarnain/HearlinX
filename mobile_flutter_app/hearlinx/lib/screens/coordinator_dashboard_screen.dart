@@ -1148,6 +1148,83 @@ class _CoordinatorDashboardScreenState
     );
   }
 
+  Future<void> _quickAction(
+    String id,
+    String status,
+    String successMessage,
+  ) async {
+    final t = context.read<LanguageProvider>().text;
+    try {
+      final token = await _authService.getToken();
+      if (token == null || token.isEmpty) throw Exception(t.sessionExpired);
+
+      final response = await http
+          .patch(
+            Uri.parse('${ApiConfig.baseUrl}/followups/$id'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'status': status}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: AppStyles.success,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      await _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: AppStyles.danger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmAndQuickAction(
+    String id,
+    String status,
+    String confirmMessage,
+    String successMessage,
+  ) async {
+    final t = context.read<LanguageProvider>().text;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.confirmAction),
+        content: Text(confirmMessage),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(t.no),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppStyles.accent),
+            child: Text(t.yes),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _quickAction(id, status, successMessage);
+    }
+  }
+
   Future<void> _showFollowUpDetails(_FollowUpItem item) async {
     final t = context.read<LanguageProvider>().text;
     final notesController = TextEditingController(text: item.notes ?? '');
@@ -1231,7 +1308,7 @@ class _CoordinatorDashboardScreenState
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(
-                                  Icons.child_care_rounded,
+                                  Icons.person,
                                   color: AppStyles.accent,
                                   size: 20,
                                 ),
@@ -1491,7 +1568,7 @@ class _CoordinatorDashboardScreenState
                             ),
                             if (events.isNotEmpty)
                               Text(
-                                '${events.length} ${t.timelineTitle.toLowerCase()}',
+                                '${events.length} ${t.timelineCount}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppStyles.textSecondary,
@@ -1774,77 +1851,165 @@ class _CoordinatorDashboardScreenState
         ? t.noDueDate
         : DateFormat('d MMM').format(item.dueDate!);
 
-    return InkWell(
-      onTap: () => _showFollowUpDetails(item),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: urgencyColor.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: urgencyColor.withValues(alpha: 0.15),
-            width: 1,
-          ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: urgencyColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: urgencyColor.withValues(alpha: 0.15),
+          width: 1,
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: urgencyColor,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Column(
+        children: [
+          // Tap-to-view-details row
+          InkWell(
+            onTap: () => _showFollowUpDetails(item),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
                 children: [
-                  Text(
-                    item.babySystemId,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'monospace',
-                      fontSize: 13,
-                      letterSpacing: 0.5,
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: urgencyColor,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$dueText · $urgencyLabel',
-                    style: TextStyle(
-                      color: AppStyles.textSecondary,
-                      fontSize: 11,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.babySystemId,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$dueText · $urgencyLabel',
+                          style: TextStyle(
+                            color: AppStyles.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: urgencyColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _translateStatus(item.status, t),
+                      style: TextStyle(
+                        color: urgencyColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppStyles.textSecondary,
+                    size: 20,
                   ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: urgencyColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                _translateStatus(item.status, t),
-                style: TextStyle(
-                  color: urgencyColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+          ),
+
+          // Quick action buttons -- instant update, no modal
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _miniActionButton(
+                  t.markContacted,
+                  () => _quickAction(item.id, 'contacted', t.markedAsContacted),
+                  Colors.green,
                 ),
-              ),
+                _miniActionButton(
+                  t.bookAppointment,
+                  () => _quickAction(
+                    item.id,
+                    'appointment_booked',
+                    t.appointmentBooked,
+                  ),
+                  Colors.blue,
+                ),
+                _miniActionButton(
+                  t.escalate,
+                  () => _confirmAndQuickAction(
+                    item.id,
+                    'escalated',
+                    t.confirmEscalate,
+                    t.caseEscalated,
+                  ),
+                  Colors.orange,
+                ),
+                _miniActionButton(
+                  t.complete,
+                  () => _confirmAndQuickAction(
+                    item.id,
+                    'completed',
+                    t.confirmComplete,
+                    t.caseCompleted,
+                  ),
+                  AppStyles.success,
+                ),
+                _miniActionButton(
+                  t.markLtfu,
+                  () => _confirmAndQuickAction(
+                    item.id,
+                    'lost_to_followup',
+                    t.confirmMarkLtfu,
+                    t.caseMarkedLtfu,
+                  ),
+                  AppStyles.warning,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppStyles.textSecondary,
-              size: 20,
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniActionButton(String label, VoidCallback onTap, Color color) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

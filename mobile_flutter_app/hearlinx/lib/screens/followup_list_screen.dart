@@ -150,11 +150,15 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
     };
   }
 
-  Future<void> _quickUpdateStatus(String id, String status) async {
+  Future<void> _quickAction(
+    String id,
+    String status,
+    String successMessage,
+  ) async {
     final t = context.read<LanguageProvider>().text;
     try {
       final token = await _authService.getToken();
-      if (token == null) return;
+      if (token == null || token.isEmpty) throw Exception(t.sessionExpired);
 
       final response = await http
           .patch(
@@ -173,19 +177,53 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(t.followupStatusUpdated),
+          content: Text(successMessage),
           backgroundColor: AppStyles.success,
           duration: const Duration(seconds: 2),
         ),
       );
       await _loadData();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: AppStyles.danger,
         ),
       );
+    }
+  }
+
+  Future<void> _confirmAndQuickAction(
+    String id,
+    String status,
+    String confirmMessage,
+    String successMessage,
+  ) async {
+    final t = context.read<LanguageProvider>().text;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.confirmAction),
+        content: Text(confirmMessage),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(t.no),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppStyles.accent),
+            child: Text(t.yes),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _quickAction(id, status, successMessage);
     }
   }
 
@@ -483,33 +521,47 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
               children: [
                 _actionButton(
                   t.markContacted,
-                  Icons.phone_rounded,
                   Colors.green,
-                  () => _quickUpdateStatus(item.id, 'contacted'),
+                  () => _quickAction(item.id, 'contacted', t.markedAsContacted),
                 ),
                 _actionButton(
                   t.bookAppointment,
-                  Icons.calendar_today_rounded,
                   Colors.blue,
-                  () => _quickUpdateStatus(item.id, 'appointment_booked'),
+                  () => _quickAction(
+                    item.id,
+                    'appointment_booked',
+                    t.appointmentBooked,
+                  ),
                 ),
                 _actionButton(
                   t.escalate,
-                  Icons.arrow_upward_rounded,
                   Colors.orange,
-                  () => _quickUpdateStatus(item.id, 'escalated'),
+                  () => _confirmAndQuickAction(
+                    item.id,
+                    'escalated',
+                    t.confirmEscalate,
+                    t.caseEscalated,
+                  ),
                 ),
                 _actionButton(
                   t.complete,
-                  Icons.check_circle_rounded,
                   AppStyles.success,
-                  () => _quickUpdateStatus(item.id, 'completed'),
+                  () => _confirmAndQuickAction(
+                    item.id,
+                    'completed',
+                    t.confirmComplete,
+                    t.caseCompleted,
+                  ),
                 ),
                 _actionButton(
                   t.markLtfu,
-                  Icons.warning_rounded,
                   AppStyles.warning,
-                  () => _quickUpdateStatus(item.id, 'lost_to_followup'),
+                  () => _confirmAndQuickAction(
+                    item.id,
+                    'lost_to_followup',
+                    t.confirmMarkLtfu,
+                    t.caseMarkedLtfu,
+                  ),
                 ),
               ],
             ),
@@ -532,27 +584,21 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
     );
   }
 
-  Widget _actionButton(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return OutlinedButton.icon(
+  Widget _actionButton(String label, Color color, VoidCallback onPressed) {
+    return OutlinedButton(
       onPressed: onPressed,
-      icon: Icon(icon, size: 14, color: color),
-      label: Text(
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: color.withValues(alpha: 0.3)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      child: Text(
         label,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: color,
         ),
-      ),
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
