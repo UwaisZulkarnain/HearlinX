@@ -209,8 +209,8 @@ class AppText {
   String get versionUpToDate => isMs ? 'Versi terkini' : 'Up to date';
   String get updateApplied =>
       isMs ? 'Aplikasi telah dikemaskini' : 'Update applied';
-  String get patchLabel => isMs ? 'Tampalan' : 'Patch';
-  String get appVersion => 'v1.0.0';
+  String get patchLabel => isMs ? 'Kemaskini Perisian' : 'Software Update';
+  String get appVersion => 'v1.0.1';
 
   // Follow-up status translations
   String get statusPending => isMs ? 'Belum Selesai' : 'Pending';
