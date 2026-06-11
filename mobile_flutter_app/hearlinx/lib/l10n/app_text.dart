@@ -54,6 +54,22 @@ class AppText {
   String get allSaved => isMs ? 'Semua Tersimpan' : 'All Saved';
   String get pendingSync =>
       isMs ? 'rekod belum disinkron' : 'records pending sync';
+  String get syncFailedMessage =>
+      isMs ? 'rekod gagal disync' : 'records failed to sync';
+  String get viewFailed => isMs ? 'Lihat' : 'View';
+  String get failedSyncsTitle => isMs ? 'Sync Gagal' : 'Failed Syncs';
+  String get retry => isMs ? 'Cuba Semula' : 'Retry';
+  String get deleteRecord => isMs ? 'Padam Rekod' : 'Delete Record';
+  String get confirmDeleteFailed => isMs
+      ? 'Padam rekod ini? Ia tidak akan dihantar ke server.'
+      : 'Delete this record? It will not be sent to the server.';
+  String get retryAll => isMs ? 'Cuba Semula Semua' : 'Retry All';
+  String get noFailedSyncs =>
+      isMs ? 'Tiada rekod sync gagal' : 'No failed sync records';
+  String get errorCode => isMs ? 'Kod Ralat' : 'Error Code';
+  String get attempts => isMs ? 'Cubaan' : 'Attempts';
+  String get createdAt => isMs ? 'Dicipta Pada' : 'Created At';
+  String get errorMessageLabel => isMs ? 'Ralat' : 'Error';
   String get continueText => isMs ? 'Teruskan' : 'Continue';
   String get typeBabyId => isMs ? 'Taip ID Bayi' : 'Enter Baby ID';
   String get enterBabyToContinue => isMs
@@ -134,7 +150,7 @@ class AppText {
       ? 'Sambungan internet tiada. Sila cuba semula.'
       : 'No internet connection. Please try again.';
   String get unknownError => isMs ? 'Ralat tidak diketahui' : 'Unknown error';
-  String get retry => isMs ? 'Cuba Semula' : 'Retry';
+  String get retryAction => isMs ? 'Cuba Semula' : 'Retry';
   String get cancel => isMs ? 'Batal' : 'Cancel';
   String get confirm => isMs ? 'Sahkan' : 'Confirm';
   String get save => isMs ? 'Simpan' : 'Save';

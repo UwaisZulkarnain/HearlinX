@@ -1313,15 +1313,21 @@ class _CoordinatorDashboardScreenState
                         : () async {
                             final picked = await showTimePicker(
                               context: context,
-                              initialTime: TimeOfDay.now(),
+                              initialTime: const TimeOfDay(hour: 9, minute: 0),
+                              initialEntryMode: TimePickerEntryMode.input,
                               builder: (context, child) {
-                                return Theme(
-                                  data: Theme.of(context).copyWith(
-                                    colorScheme: ColorScheme.light(
-                                      primary: AppStyles.accent,
+                                return MediaQuery(
+                                  data: MediaQuery.of(
+                                    context,
+                                  ).copyWith(alwaysUse24HourFormat: true),
+                                  child: Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: ColorScheme.light(
+                                        primary: AppStyles.accent,
+                                      ),
                                     ),
+                                    child: child!,
                                   ),
-                                  child: child!,
                                 );
                               },
                             );
@@ -1356,7 +1362,7 @@ class _CoordinatorDashboardScreenState
                           Text(
                             selectedTime == null
                                 ? (t.isMs ? 'Pilih masa' : 'Pick time')
-                                : selectedTime!.format(context),
+                                : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
                             style: TextStyle(
                               color: selectedTime == null
                                   ? (selectedDate == null
@@ -1377,12 +1383,38 @@ class _CoordinatorDashboardScreenState
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
-                        '${DateFormat('d MMM yyyy').format(selectedDate!)} · ${selectedTime!.format(context)}',
+                        '${DateFormat('d MMM yyyy').format(selectedDate!)} · ${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: AppStyles.accent,
                           fontSize: 13,
                         ),
+                      ),
+                    ),
+
+                  // Show warning if date selected but time not yet picked
+                  if (selectedDate != null && selectedTime == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 14,
+                            color: AppStyles.danger,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              t.isMs ? 'Sila pilih masa' : 'Please select time',
+                              style: TextStyle(
+                                color: AppStyles.danger,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -1526,17 +1558,6 @@ class _CoordinatorDashboardScreenState
                               color: Colors.grey[300],
                               borderRadius: BorderRadius.circular(2),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Title
-                        Text(
-                          t.followUpDetailTitle,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: AppStyles.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -2090,20 +2111,117 @@ class _CoordinatorDashboardScreenState
     );
   }
 
-  Widget _buildCompactFollowUpRow(_FollowUpItem item, AppText t) {
-    final (urgencyLabel, urgencyColor) = switch (item.urgency) {
-      'ltfu' => (t.ltfu, AppStyles.warning),
-      'red' => (t.redRisk, AppStyles.danger),
-      'amber' => (
-        item.daysOverdue > 0 ? '${t.overdue} ${item.daysOverdue}h' : t.overdue,
-        const Color(0xFFEA580C),
+  (String urgency, String label, Color color, String subtitle) _resolveUrgency(
+    _FollowUpItem item,
+    AppText t,
+  ) {
+    final now = DateTime.now();
+
+    // Helper: format date without showing ":00" midnight time
+    String _formatAppointmentDate(DateTime date) {
+      final hasTime = date.hour != 0 || date.minute != 0;
+      final dateFormat = hasTime
+          ? (t.isMs ? 'd MMM yyyy, HH:mm' : 'd MMM yyyy, hh:mm a')
+          : 'd MMM yyyy';
+      return DateFormat(dateFormat, 'en_US').format(date);
+    }
+
+    // 1. Appointment-based override (most important)
+    if (item.appointmentDate != null) {
+      final hoursUntil = item.appointmentDate!.difference(now).inHours;
+
+      if (hoursUntil <= 24 && hoursUntil > 0) {
+        return (
+          'red',
+          t.redRisk,
+          AppStyles.danger,
+          '${t.appointmentDate}: ${_formatAppointmentDate(item.appointmentDate!)} · ${t.overdue}',
+        );
+      }
+      if (hoursUntil <= 168 && hoursUntil > 0) {
+        return (
+          'amber',
+          t.statusContacted,
+          const Color(0xFFEA580C),
+          '${t.appointmentDate}: ${_formatAppointmentDate(item.appointmentDate!)} · ${hoursUntil ~/ 24} ${t.dateLabel}',
+        );
+      }
+      if (hoursUntil <= 0) {
+        return (
+          'red',
+          t.redRisk,
+          AppStyles.danger,
+          '${t.appointmentDate}: ${_formatAppointmentDate(item.appointmentDate!)} · ${t.overdue}',
+        );
+      }
+    }
+
+    // 2. Backend urgency fallback
+    return switch (item.urgency) {
+      'ltfu' => (
+        'ltfu',
+        t.ltfu,
+        AppStyles.warning,
+        item.daysOverdue > 0
+            ? '${t.dateLabel} ${item.daysOverdue} ${t.dateLabel}'
+            : '${t.dateLabel} ${t.dateLabel}',
       ),
-      _ => (t.newFollowup, AppStyles.accent),
+      'red' => (
+        'red',
+        t.redRisk,
+        AppStyles.danger,
+        item.daysOverdue > 0
+            ? '${t.dateLabel} ${item.daysOverdue} ${t.dateLabel}'
+            : '${t.dateLabel} ${t.dateLabel}',
+      ),
+      'amber' => (
+        'amber',
+        t.overdue,
+        const Color(0xFFEA580C),
+        '${t.dueDateLabel}: ${DateFormat('d MMM').format(item.dueDate ?? now)}',
+      ),
+      _ => (
+        'new',
+        t.newFollowup,
+        AppStyles.accent,
+        item.dueDate != null
+            ? '${t.dueDateLabel}: ${DateFormat('d MMM').format(item.dueDate!)}'
+            : t.noDueDate,
+      ),
     };
+  }
+
+  Widget _buildCompactFollowUpRow(_FollowUpItem item, AppText t) {
+    final (urgency, urgencyLabel, urgencyColor, subtitle) = _resolveUrgency(
+      item,
+      t,
+    );
+
+    final screeningText = item.screeningDate != null
+        ? '${t.dateLabel}: ${DateFormat('d MMM').format(item.screeningDate!)}'
+        : '';
 
     final dueText = item.dueDate == null
         ? t.noDueDate
         : DateFormat('d MMM').format(item.dueDate!);
+
+    // Format appointment time for compact display badge
+    String? appointmentTimeText;
+    Color appointmentTimeColor = AppStyles.accent;
+    if (item.appointmentDate != null) {
+      final hasTime =
+          item.appointmentDate!.hour != 0 || item.appointmentDate!.minute != 0;
+      final displayFormat = hasTime
+          ? (t.isMs ? 'd MMM yyyy, HH:mm' : 'd MMM yyyy, hh:mm a')
+          : 'd MMM yyyy';
+      appointmentTimeText = DateFormat(
+        displayFormat,
+        'en_US',
+      ).format(item.appointmentDate!);
+      if (item.appointmentDate!.isBefore(DateTime.now())) {
+        appointmentTimeColor = AppStyles.danger;
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -2148,13 +2266,73 @@ class _CoordinatorDashboardScreenState
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          '$dueText · $urgencyLabel',
-                          style: TextStyle(
-                            color: AppStyles.textSecondary,
-                            fontSize: 11,
+                        if (subtitle.isNotEmpty)
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              color: AppStyles.textSecondary,
+                              fontSize: 11,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else ...[
+                          Text(
+                            '$dueText · $urgencyLabel',
+                            style: TextStyle(
+                              color: AppStyles.textSecondary,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
+                        ],
+                        if (screeningText.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              screeningText,
+                              style: TextStyle(
+                                color: AppStyles.textSecondary,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        // Compact appointment time badge
+                        if (item.appointmentDate != null &&
+                            appointmentTimeText != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: appointmentTimeColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 10,
+                                    color: appointmentTimeColor,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    appointmentTimeText,
+                                    style: TextStyle(
+                                      color: appointmentTimeColor,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -2305,6 +2483,7 @@ class _FollowUpItem {
     required this.appointmentDate,
     required this.ltfuReason,
     required this.contactAttempts,
+    required this.screeningDate,
   });
 
   factory _FollowUpItem.fromJson(Map<String, dynamic> json) {
@@ -2328,6 +2507,9 @@ class _FollowUpItem {
       appointmentDate: parseDateSafe(json['appointment_date']),
       ltfuReason: json['ltfu_reason'] as String?,
       contactAttempts: json['contact_attempts'] as int? ?? 0,
+      screeningDate: parseDateSafe(
+        json['created_at'] ?? json['screening_date'],
+      ),
     );
   }
 
@@ -2341,6 +2523,7 @@ class _FollowUpItem {
   final DateTime? appointmentDate;
   final String? ltfuReason;
   final int contactAttempts;
+  final DateTime? screeningDate;
 }
 
 class _FollowUpEvent {

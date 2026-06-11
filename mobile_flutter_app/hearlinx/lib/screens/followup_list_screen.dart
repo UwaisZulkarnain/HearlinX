@@ -108,9 +108,13 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
     }
 
     if (_filterUrgency != 'all') {
-      filtered = filtered
-          .where((item) => item.urgency == _filterUrgency)
-          .toList();
+      filtered = filtered.where((item) {
+        final (effectiveUrgency, _, _, _) = _resolveUrgency(
+          item,
+          context.read<LanguageProvider>().text,
+        );
+        return effectiveUrgency == _filterUrgency;
+      }).toList();
     }
 
     setState(() {
@@ -147,6 +151,86 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
       'red' => AppStyles.danger,
       'amber' => const Color(0xFFEA580C),
       _ => AppStyles.accent,
+    };
+  }
+
+  (String urgency, String label, Color color, String subtitle) _resolveUrgency(
+    _FollowUpListItem item,
+    AppText t,
+  ) {
+    final now = DateTime.now();
+
+    // Helper: format date without showing ":00" midnight time
+    String _formatAppointmentDate(DateTime date) {
+      final hasTime = date.hour != 0 || date.minute != 0;
+      final dateFormat = hasTime
+          ? (t.isMs ? 'd MMM yyyy, HH:mm' : 'd MMM yyyy, hh:mm a')
+          : 'd MMM yyyy';
+      return DateFormat(dateFormat, 'en_US').format(date);
+    }
+
+    // 1. Appointment-based override (most important)
+    if (item.appointmentDate != null) {
+      final hoursUntil = item.appointmentDate!.difference(now).inHours;
+
+      if (hoursUntil <= 24 && hoursUntil > 0) {
+        return (
+          'red',
+          t.redRisk,
+          AppStyles.danger,
+          '${t.appointmentDate}: ${_formatAppointmentDate(item.appointmentDate!)} · ${t.overdue}',
+        );
+      }
+      if (hoursUntil <= 168 && hoursUntil > 0) {
+        return (
+          'amber',
+          t.statusContacted,
+          const Color(0xFFEA580C),
+          '${t.appointmentDate}: ${_formatAppointmentDate(item.appointmentDate!)} · ${hoursUntil ~/ 24} ${t.dateLabel}',
+        );
+      }
+      if (hoursUntil <= 0) {
+        return (
+          'red',
+          t.redRisk,
+          AppStyles.danger,
+          '${t.appointmentDate}: ${_formatAppointmentDate(item.appointmentDate!)} · ${t.overdue}',
+        );
+      }
+    }
+
+    // 2. Backend urgency fallback
+    return switch (item.urgency) {
+      'ltfu' => (
+        'ltfu',
+        t.ltfu,
+        AppStyles.warning,
+        item.daysOverdue > 0
+            ? '${t.dateLabel} ${item.daysOverdue} ${t.dateLabel}'
+            : '${t.dateLabel} ${t.dateLabel}',
+      ),
+      'red' => (
+        'red',
+        t.redRisk,
+        AppStyles.danger,
+        item.daysOverdue > 0
+            ? '${t.dateLabel} ${item.daysOverdue} ${t.dateLabel}'
+            : '${t.dateLabel} ${t.dateLabel}',
+      ),
+      'amber' => (
+        'amber',
+        t.overdue,
+        const Color(0xFFEA580C),
+        '${t.dueDateLabel}: ${DateFormat('d MMM').format(item.dueDate ?? now)}',
+      ),
+      _ => (
+        'new',
+        t.newFollowup,
+        AppStyles.accent,
+        item.dueDate != null
+            ? '${t.dueDateLabel}: ${DateFormat('d MMM').format(item.dueDate!)}'
+            : t.noDueDate,
+      ),
     };
   }
 
@@ -358,15 +442,21 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
                         : () async {
                             final picked = await showTimePicker(
                               context: context,
-                              initialTime: TimeOfDay.now(),
+                              initialTime: const TimeOfDay(hour: 9, minute: 0),
+                              initialEntryMode: TimePickerEntryMode.input,
                               builder: (context, child) {
-                                return Theme(
-                                  data: Theme.of(context).copyWith(
-                                    colorScheme: ColorScheme.light(
-                                      primary: AppStyles.accent,
+                                return MediaQuery(
+                                  data: MediaQuery.of(
+                                    context,
+                                  ).copyWith(alwaysUse24HourFormat: true),
+                                  child: Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: ColorScheme.light(
+                                        primary: AppStyles.accent,
+                                      ),
                                     ),
+                                    child: child!,
                                   ),
-                                  child: child!,
                                 );
                               },
                             );
@@ -401,7 +491,7 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
                           Text(
                             selectedTime == null
                                 ? (t.isMs ? 'Pilih masa' : 'Pick time')
-                                : selectedTime!.format(context),
+                                : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
                             style: TextStyle(
                               color: selectedTime == null
                                   ? (selectedDate == null
@@ -422,12 +512,38 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
-                        '${DateFormat('d MMM yyyy').format(selectedDate!)} · ${selectedTime!.format(context)}',
+                        '${DateFormat('d MMM yyyy').format(selectedDate!)} · ${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: AppStyles.accent,
                           fontSize: 13,
                         ),
+                      ),
+                    ),
+
+                  // Show warning if date selected but time not yet picked
+                  if (selectedDate != null && selectedTime == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 14,
+                            color: AppStyles.danger,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              t.isMs ? 'Sila pilih masa' : 'Please select time',
+                              style: TextStyle(
+                                color: AppStyles.danger,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -686,11 +802,34 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
   }
 
   Widget _buildFollowUpCard(_FollowUpListItem item, AppText t) {
-    final urgencyColor = _urgencyColor(item.urgency);
+    final (effectiveUrgency, urgencyLabel, urgencyColor, subtitle) =
+        _resolveUrgency(item, t);
     final dueText = item.dueDate == null
         ? t.noDueDate
         : DateFormat('d MMM yyyy').format(item.dueDate!);
     final isOverdue = item.daysOverdue > 0;
+
+    // Format appointment time for display
+    String? appointmentTimeText;
+    Color appointmentTimeColor = AppStyles.accent;
+    if (item.appointmentDate != null) {
+      final hasTime =
+          item.appointmentDate!.hour != 0 || item.appointmentDate!.minute != 0;
+      final timeFormat = hasTime
+          ? (t.isMs ? 'HH:mm' : 'hh:mm a')
+          : 'd MMM yyyy';
+      final displayFormat = hasTime
+          ? (t.isMs ? 'd MMM yyyy, HH:mm' : 'd MMM yyyy, hh:mm a')
+          : 'd MMM yyyy';
+      appointmentTimeText = DateFormat(
+        displayFormat,
+        'en_US',
+      ).format(item.appointmentDate!);
+      // Show warning color if overdue
+      if (item.appointmentDate!.isBefore(DateTime.now())) {
+        appointmentTimeColor = AppStyles.danger;
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -757,7 +896,7 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              _translateUrgency(item.urgency, t),
+                              urgencyLabel,
                               style: TextStyle(
                                 color: urgencyColor,
                                 fontSize: 11,
@@ -777,6 +916,61 @@ class _FollowUpListScreenState extends State<FollowUpListScreen> {
                             ),
                         ],
                       ),
+                      if (subtitle.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppStyles.textSecondary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      // Appointment time badge - prominently shown for any card with appointment
+                      if (item.appointmentDate != null &&
+                          appointmentTimeText != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: appointmentTimeColor.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: appointmentTimeColor.withValues(
+                                  alpha: 0.25,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.schedule_rounded,
+                                  size: 12,
+                                  color: appointmentTimeColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  appointmentTimeText,
+                                  style: TextStyle(
+                                    color: appointmentTimeColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -901,6 +1095,9 @@ class _FollowUpListItem {
     required this.urgency,
     required this.daysOverdue,
     required this.contactAttempts,
+    required this.appointmentDate,
+    required this.notes,
+    required this.ltfuReason,
   });
 
   factory _FollowUpListItem.fromJson(Map<String, dynamic> json) {
@@ -921,6 +1118,9 @@ class _FollowUpListItem {
       urgency: json['urgency'] as String? ?? 'new',
       daysOverdue: json['days_overdue'] as int? ?? 0,
       contactAttempts: json['contact_attempts'] as int? ?? 0,
+      appointmentDate: parseDateSafe(json['appointment_date']),
+      notes: json['notes'] as String?,
+      ltfuReason: json['ltfu_reason'] as String?,
     );
   }
 
@@ -931,4 +1131,7 @@ class _FollowUpListItem {
   final String urgency;
   final int daysOverdue;
   final int contactAttempts;
+  final DateTime? appointmentDate;
+  final String? notes;
+  final String? ltfuReason;
 }

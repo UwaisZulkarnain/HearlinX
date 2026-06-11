@@ -41,9 +41,7 @@ class AppShell extends StatelessWidget {
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/home', (route) => false);
+                  Navigator.of(context).pop();
                 },
               )
             : null,

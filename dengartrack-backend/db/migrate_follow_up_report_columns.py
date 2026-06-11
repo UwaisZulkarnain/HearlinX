@@ -18,7 +18,7 @@ def migrate_follow_up_report_columns():
                 """
                 ALTER TABLE follow_ups
                 ADD COLUMN IF NOT EXISTS last_contacted_at TIMESTAMP,
-                ADD COLUMN IF NOT EXISTS appointment_date DATE,
+                ADD COLUMN IF NOT EXISTS appointment_date TIMESTAMPTZ,
                 ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP,
                 ADD COLUMN IF NOT EXISTS ltfu_reason TEXT,
                 ADD COLUMN IF NOT EXISTS contact_attempts INTEGER

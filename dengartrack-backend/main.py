@@ -17,6 +17,7 @@ from routers.screenings import router as screenings_router
 from routers.users import router as users_router
 
 from db.database import engine as db_engine
+from db.migrate_fix_appointment_date_type import migrate_fix_appointment_date_type
 
 app = FastAPI(
     title="DengarTrack API", 
@@ -37,6 +38,12 @@ def fix_followups_null_data():
             """))
     except Exception:
         pass  # Table may not exist yet on fresh DB
+
+
+@app.on_event("startup")
+def fix_appointment_date_type():
+    """Ensure appointment_date is TIMESTAMPTZ so time component is preserved."""
+    migrate_fix_appointment_date_type()
 
 # Add CORS middleware
 app.add_middleware(

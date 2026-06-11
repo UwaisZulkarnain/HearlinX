@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/api_config.dart';
 import '../models/user.dart';
 import '../providers/language_provider.dart';
 import '../services/auth_service.dart';
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   User? _user;
   bool _isLoading = true;
   int _pendingSyncCount = 0;
+  int _failedSyncCount = 0;
   Timer? _syncTimer;
 
   @override
@@ -58,21 +60,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _refreshSyncStatus() async {
-    final count = await _offlineService.getPendingScreeningCount();
+    final stats = await _offlineService.getSyncStats();
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _pendingSyncCount = count;
+      _pendingSyncCount = stats['pending'] ?? 0;
+      _failedSyncCount = stats['failed'] ?? 0;
     });
   }
 
   Future<void> _syncPendingScreenings() async {
+    final isOnline = await ApiConfig.checkConnectivity();
+    if (!isOnline) return;
+
     final token = await _authService.getToken();
-    if (token != null && token.isNotEmpty) {
-      await _offlineService.syncPendingScreenings(token);
+    if (token == null || token.isEmpty) return;
+
+    final result = await _offlineService.syncPendingScreenings(token);
+
+    if (result['authError'] == true && mounted) {
+      final t = context.read<LanguageProvider>().text;
+      await _authService.logout();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t.sessionExpired),
+          backgroundColor: AppStyles.danger,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      return;
     }
+
+    if (result['failed'] > 0 && mounted) {
+      final t = context.read<LanguageProvider>().text;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${result['failed']} ${t.syncFailedMessage}'),
+          backgroundColor: AppStyles.warning,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: t.viewFailed,
+            textColor: Colors.white,
+            onPressed: () => Navigator.of(context).pushNamed('/failed-syncs'),
+          ),
+        ),
+      );
+    }
+
     await _refreshSyncStatus();
   }
 
@@ -225,46 +262,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSyncStatus() {
     final t = context.watch<LanguageProvider>().text;
+    final hasFailed = _failedSyncCount > 0;
     final hasPending = _pendingSyncCount > 0;
+    final bannerColor = hasFailed
+        ? AppStyles.danger
+        : hasPending
+        ? AppStyles.warning
+        : AppStyles.success;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: hasPending
-            ? AppStyles.warning.withValues(alpha: 0.12)
-            : AppStyles.success.withValues(alpha: 0.12),
+        color: bannerColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: hasPending
-              ? AppStyles.warning.withValues(alpha: 0.3)
-              : AppStyles.success.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: bannerColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
-            hasPending ? Icons.sync_problem_rounded : Icons.cloud_done_rounded,
-            color: hasPending ? AppStyles.warning : AppStyles.success,
+            hasFailed
+                ? Icons.error_outline_rounded
+                : hasPending
+                ? Icons.sync_problem_rounded
+                : Icons.cloud_done_rounded,
+            color: bannerColor,
             size: 20,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              hasPending ? '$_pendingSyncCount ${t.pendingSync}' : t.allSaved,
+              hasFailed
+                  ? '$_failedSyncCount ${t.syncFailedMessage}'
+                  : hasPending
+                  ? '$_pendingSyncCount ${t.pendingSync}'
+                  : t.allSaved,
               style: TextStyle(
-                color: hasPending ? AppStyles.warning : AppStyles.success,
+                color: bannerColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          if (hasPending)
+          if (hasFailed || hasPending)
             Container(
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: AppStyles.warning,
+                color: bannerColor,
                 shape: BoxShape.circle,
               ),
             ),
